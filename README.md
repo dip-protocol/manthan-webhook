@@ -5,7 +5,7 @@ hi
 Minimal, deterministic GitHub webhook ingestion service.
 
 
-
+bye
 \## Purpose
 
 
