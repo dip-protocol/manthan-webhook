@@ -17,7 +17,7 @@ privateKey,
 // --- Get Installation Token ---
 async function getInstallationToken() {
 const appId = process.env.GITHUB_APP_ID;
-const privateKey = process.env.GITHUB_APP_PRIVATE_KEY;
+const privateKey = process.env.GITHUB_APP_PRIVATE_KEY.replace(/\r/g, "");
 const installationId = process.env.GITHUB_INSTALLATION_ID;
 
 if (!appId || !privateKey || !installationId) {
