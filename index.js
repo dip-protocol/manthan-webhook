@@ -6,83 +6,65 @@ import { enforcePR } from "./engine/enforce.js";
 const app = express();
 app.use(express.json());
 
-// --- ENV ---
 const SECRET = process.env.GITHUB_SECRET;
 
-if (!SECRET) {
-console.error("Missing GITHUB_SECRET environment variable");
-}
-
-// --- Signature Verification ---
 function verifySignature(req) {
-const signature = req.headers["x-hub-signature-256"];
+  const signature = req.headers["x-hub-signature-256"];
+  if (!signature || !SECRET) return true;
 
-// allow in dev if no secret
-if (!signature || !SECRET) return true;
+  const hmac = crypto.createHmac("sha256", SECRET);
+  const digest =
+    "sha256=" + hmac.update(JSON.stringify(req.body)).digest("hex");
 
-const hmac = crypto.createHmac("sha256", SECRET);
-const digest =
-"sha256=" + hmac.update(JSON.stringify(req.body)).digest("hex");
-
-try {
-return crypto.timingSafeEqual(
-Buffer.from(signature),
-Buffer.from(digest)
-);
-} catch {
-return false;
-}
+  try {
+    return crypto.timingSafeEqual(
+      Buffer.from(signature),
+      Buffer.from(digest)
+    );
+  } catch {
+    return false;
+  }
 }
 
-// --- Webhook Endpoint ---
 app.post("/webhook", async (req, res) => {
-try {
-if (!verifySignature(req)) {
-console.log("Invalid signature");
-return res.sendStatus(401);
-}
+  try {
+    if (!verifySignature(req)) {
+      console.log("Invalid signature");
+      return res.sendStatus(401);
+    }
 
-```
-const event = req.headers["x-github-event"];
+    const event = req.headers["x-github-event"];
 
-// Normalize input
-const normalized = {
-  event,
-  repo: req.body.repository?.full_name || null,
-  action: req.body.action || null,
-  pr: req.body.pull_request?.number || null,
-  timestamp: new Date().toISOString(),
-};
+    const normalized = {
+      event,
+      repo: req.body.repository?.full_name || null,
+      action: req.body.action || null,
+      pr: req.body.pull_request?.number || null,
+      timestamp: new Date().toISOString(),
+    };
 
-console.log("EVENT:", JSON.stringify(normalized, null, 2));
+    console.log("EVENT:", JSON.stringify(normalized, null, 2));
 
-// --- Decision Engine ---
-const decisions = runDecisionEngine(event, req.body);
+    const decisions = runDecisionEngine(event, req.body);
 
-if (decisions) {
-  console.log("DECISIONS:", JSON.stringify(decisions, null, 2));
+    if (decisions) {
+      console.log("DECISIONS:", JSON.stringify(decisions, null, 2));
+      await enforcePR(decisions, req.body);
+    }
 
-  // --- ENFORCEMENT ---
-  await enforcePR(decisions, req.body);
-}
-
-return res.sendStatus(200);
-```
-
-} catch (err) {
-console.error("Webhook error:", err);
-return res.sendStatus(500);
-}
+    res.sendStatus(200);
+  } catch (err) {
+    console.error("Webhook error:", err);
+    res.sendStatus(500);
+  }
 });
 
-// --- Health Check ---
 app.get("/", (_, res) => {
-res.send("Manthan Webhook Running");
+  res.send("Manthan Webhook Running");
 });
 
-// --- Server ---
 const PORT = process.env.PORT || 8080;
 
 app.listen(PORT, "0.0.0.0", () => {
-console.log(`Server running on ${PORT}`);
+  console.log(`Server running on ${PORT}`);
 });
