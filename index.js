@@ -16,7 +16,9 @@ console.error("Missing GITHUB_SECRET environment variable");
 // --- Signature Verification ---
 function verifySignature(req) {
 const signature = req.headers["x-hub-signature-256"];
-if (!signature || !SECRET) return true; // allow if no secret (dev mode)
+
+// allow in dev if no secret
+if (!signature || !SECRET) return true;
 
 const hmac = crypto.createHmac("sha256", SECRET);
 const digest =
@@ -34,20 +36,22 @@ return false;
 
 // --- Webhook Endpoint ---
 app.post("/webhook", async (req, res) => {
+try {
 if (!verifySignature(req)) {
 console.log("Invalid signature");
 return res.sendStatus(401);
 }
 
+```
 const event = req.headers["x-github-event"];
 
 // Normalize input
 const normalized = {
-event,
-repo: req.body.repository?.full_name || null,
-action: req.body.action || null,
-pr: req.body.pull_request?.number || null,
-timestamp: new Date().toISOString(),
+  event,
+  repo: req.body.repository?.full_name || null,
+  action: req.body.action || null,
+  pr: req.body.pull_request?.number || null,
+  timestamp: new Date().toISOString(),
 };
 
 console.log("EVENT:", JSON.stringify(normalized, null, 2));
@@ -56,16 +60,19 @@ console.log("EVENT:", JSON.stringify(normalized, null, 2));
 const decisions = runDecisionEngine(event, req.body);
 
 if (decisions) {
-console.log("DECISIONS:", JSON.stringify(decisions, null, 2));
+  console.log("DECISIONS:", JSON.stringify(decisions, null, 2));
 
-```
-// --- ENFORCEMENT ---
-await enforcePR(decisions, req.body);
-```
-
+  // --- ENFORCEMENT ---
+  await enforcePR(decisions, req.body);
 }
 
 return res.sendStatus(200);
+```
+
+} catch (err) {
+console.error("Webhook error:", err);
+return res.sendStatus(500);
+}
 });
 
 // --- Health Check ---
