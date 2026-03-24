@@ -3,10 +3,6 @@ export const prDescriptionContract = {
 
   intent: "PR must have a description",
 
-  input: ["pull_request.body"],
-
-  output: ["approve", "reject"],
-
   evaluate: (payload) => {
     const body = payload.pull_request?.body;
 
