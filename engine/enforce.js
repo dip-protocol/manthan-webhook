@@ -1,3 +1,5 @@
+import fetch from "node-fetch";
+
 export async function enforcePR(decisions, payload) {
   if (!decisions || decisions.length === 0) return;
 
@@ -16,13 +18,21 @@ export async function enforcePR(decisions, payload) {
     .map(d => `**${d.contract}** → ${d.decision}\n${d.reason}`)
     .join("\n\n");
 
-  await fetch(`https://api.github.com/repos/${owner}/${repo}/issues/${issue_number}/comments`, {
-    method: "POST",
-    headers: {
-      "Authorization": `Bearer ${token}`,
-      "Accept": "application/vnd.github+json",
-      "Content-Type": "application/json"
-    },
-    body: JSON.stringify({ body })
-  });
+  console.log("🚀 Posting comment to GitHub");
+
+  const res = await fetch(
+    `https://api.github.com/repos/${owner}/${repo}/issues/${issue_number}/comments`,
+    {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${token}`,
+        "Accept": "application/vnd.github+json",
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({ body })
+    }
+  );
+
+  const data = await res.json();
+  console.log("GitHub response:", data);
 }
