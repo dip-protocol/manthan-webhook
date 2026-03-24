@@ -2,10 +2,7 @@ import fetch from "node-fetch";
 import jwt from "jsonwebtoken";
 
 // --- Generate JWT for GitHub App ---
-function generateJWT(appId, privateKeyRaw) {
-// 🔥 FIX: convert \n → real newlines
-const privateKey = privateKeyRaw.replace(/\n/g, "\n");
-
+function generateJWT(appId, privateKey) {
 return jwt.sign(
 {
 iat: Math.floor(Date.now() / 1000),
@@ -19,13 +16,19 @@ privateKey,
 
 // --- Get Installation Token ---
 async function getInstallationToken() {
-const jwtToken = generateJWT(
-process.env.GITHUB_APP_ID,
-process.env.GITHUB_APP_PRIVATE_KEY
-);
+const appId = process.env.GITHUB_APP_ID;
+const privateKey = process.env.GITHUB_APP_PRIVATE_KEY;
+const installationId = process.env.GITHUB_INSTALLATION_ID;
+
+if (!appId || !privateKey || !installationId) {
+console.error("Missing GitHub App environment variables");
+return null;
+}
+
+const jwtToken = generateJWT(appId, privateKey);
 
 const res = await fetch(
-`https://api.github.com/app/installations/${process.env.GITHUB_INSTALLATION_ID}/access_tokens`,
+`https://api.github.com/app/installations/${installationId}/access_tokens`,
 {
 method: "POST",
 headers: {
@@ -48,6 +51,7 @@ return data.token;
 // --- Enforce PR Decision ---
 export async function enforcePR(decisions, payload) {
 if (!decisions || decisions.length === 0) return;
+if (!payload.pull_request) return;
 
 const [owner, repo] = payload.repository.full_name.split("/");
 const issue_number = payload.pull_request.number;
@@ -60,10 +64,10 @@ return;
 }
 
 const body = decisions
-.map(d => `**${d.contract}** → ${d.decision}\n${d.reason}`)
+.map(d => `**${d.contract}** -> ${d.decision}\n${d.reason}`)
 .join("\n\n");
 
-console.log("🚀 Posting comment as Manthan-OS");
+console.log("Posting comment as Manthan-OS");
 
 const res = await fetch(
 `https://api.github.com/repos/${owner}/${repo}/issues/${issue_number}/comments`,
