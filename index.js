@@ -1,6 +1,7 @@
 import express from "express";
 import crypto from "crypto";
 import { runDecisionEngine } from "./engine/decisionEngine.js";
+import { enforcePR } from "./engine/enforce.js";
 
 const app = express();
 app.use(express.json());
@@ -32,7 +33,7 @@ return false;
 }
 
 // --- Webhook Endpoint ---
-app.post("/webhook", (req, res) => {
+app.post("/webhook", async (req, res) => {
 if (!verifySignature(req)) {
 console.log("Invalid signature");
 return res.sendStatus(401);
@@ -56,6 +57,12 @@ const decisions = runDecisionEngine(event, req.body);
 
 if (decisions) {
 console.log("DECISIONS:", JSON.stringify(decisions, null, 2));
+
+```
+// --- ENFORCEMENT ---
+await enforcePR(decisions, req.body);
+```
+
 }
 
 return res.sendStatus(200);
