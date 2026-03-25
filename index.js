@@ -2,6 +2,7 @@ import express from "express";
 import crypto from "crypto";
 import { runDecisionEngine } from "./engine/decisionEngine.js";
 import { enforcePR } from "./engine/enforce.js";
+import { saveDecision } from "./engine/decisionStore.js";
 
 const app = express();
 app.use(express.json());
@@ -44,7 +45,7 @@ app.post("/webhook", async (req, res) => {
     const event = req.headers["x-github-event"];
     const now = Date.now();
 
-    // 🔥 Cleanup old events (prevent memory leak)
+    // 🔥 Cleanup old events
     for (const [id, timestamp] of processedEvents.entries()) {
       if (now - timestamp > EVENT_TTL) {
         processedEvents.delete(id);
@@ -57,7 +58,6 @@ app.post("/webhook", async (req, res) => {
       return res.sendStatus(200);
     }
 
-    // store event
     processedEvents.set(deliveryId, now);
 
     const normalized = {
@@ -68,29 +68,44 @@ app.post("/webhook", async (req, res) => {
       timestamp: new Date().toISOString(),
     };
 
-    // ✅ Clean logs
     console.log(
       `EVENT: ${event} | ${normalized.repo} | PR #${normalized.pr}`
     );
 
-   // --- Decision Engine ---
-let decisions = runDecisionEngine(event, req.body);
+    // --- Decision Engine ---
+    let decisions = runDecisionEngine(event, req.body);
 
-// 🔥 ensure push events also produce a decision
-if (event === "push" && (!decisions || decisions.length === 0)) {
-  decisions = [
-    {
-      contract: "MAIN_BRANCH_CHECK",
-      decision: "approve",
-      reason: "Push event validation"
+    // 🔥 Ensure push always produces decision
+    if (event === "push") {
+      decisions = [
+        {
+          contract: "MAIN_BRANCH_CHECK",
+          decision: "approve",
+          reason: "Push event validation"
+        }
+      ];
+
+      console.log("DECISION: approve (push)");
     }
-  ];
-}
 
-// --- Enforcement ---
-if (decisions && decisions.length > 0) {
-  await enforcePR(decisions, req.body);
-}
+    // --- v0.3: Save Decision ---
+    const record = {
+      id: deliveryId,
+      event,
+      repo: normalized.repo,
+      pr: normalized.pr,
+      sha: req.body.pull_request?.head?.sha || req.body.after,
+      decisions,
+      timestamp: new Date().toISOString()
+    };
+
+    console.log("SAVING DECISION:", record.id);
+    saveDecision(record);
+
+    // --- Enforcement ---
+    if (decisions && decisions.length > 0) {
+      await enforcePR(decisions, req.body);
+    }
 
     res.sendStatus(200);
   } catch (err) {

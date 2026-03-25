@@ -76,11 +76,14 @@ async function setCommitStatus(token, owner, repo, sha, state, description) {
 // --- Enforce PR Decision ---
 export async function enforcePR(decisions, payload) {
   if (!decisions || decisions.length === 0) return;
-  if (!payload.pull_request) return;
+  const isPR = !!payload.pull_request;
+
+// allow push events to continue for status setting
+if (!isPR && !payload.after) return;
 
   const [owner, repo] = payload.repository.full_name.split("/");
-  const issue_number = payload.pull_request.number;
-  const sha = payload.pull_request.head.sha;
+  const issue_number = payload.pull_request?.number;
+const sha = payload.pull_request?.head?.sha || payload.after;
 
   const token = await getInstallationToken();
 
@@ -96,7 +99,8 @@ export async function enforcePR(decisions, payload) {
 
   console.log("Posting comment as Manthan-OS");
 
-  // --- Post Comment ---
+  // --- Post Comment (ONLY for PRs) ---
+if (issue_number) {
   const res = await fetch(
     `https://api.github.com/repos/${owner}/${repo}/issues/${issue_number}/comments`,
     {
@@ -111,7 +115,9 @@ export async function enforcePR(decisions, payload) {
   );
 
   const response = await res.json();
-  console.log("GitHub response:", response);
+  console.log("GitHub comment response:", response);
+}
+  
 
   // --- Set Commit Status ---
   const failed = decisions.some(d => d.decision === "reject");
