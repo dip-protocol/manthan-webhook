@@ -2,7 +2,7 @@ import express from "express";
 import crypto from "crypto";
 import { runDecisionEngine } from "./engine/decisionEngine.js";
 import { enforcePR } from "./engine/enforce.js";
-import { saveDecision } from "./engine/decisionStore.js";
+import { saveDecision, readDecisions } from "./engine/decisionStore.js";
 
 const app = express();
 app.use(express.json());
@@ -84,7 +84,6 @@ app.post("/webhook", async (req, res) => {
           reason: "Push event validation"
         }
       ];
-
       console.log("DECISION: approve (push)");
     }
 
@@ -119,6 +118,24 @@ app.get("/", (_, res) => {
   res.send("Manthan Webhook Running");
 });
 
+// --- Query Decisions (v0.3.1) ---
+app.get("/decisions", (req, res) => {
+  try {
+    const { repo, pr, sha } = req.query;
+
+    const results = readDecisions({ repo, pr, sha });
+
+    res.json({
+      count: results.length,
+      results
+    });
+  } catch (err) {
+    console.error("Query error:", err);
+    res.sendStatus(500);
+  }
+});
+
+// --- Server Start ---
 const PORT = process.env.PORT || 8080;
 
 app.listen(PORT, "0.0.0.0", () => {
