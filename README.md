@@ -1,8 +1,6 @@
 \# Manthan Webhook
 
 
-
-Minimal, deterministic GitHub webhook ingestion service.
 hki
 
 
