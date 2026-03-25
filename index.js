@@ -8,6 +8,11 @@ app.use(express.json());
 
 const SECRET = process.env.GITHUB_SECRET;
 
+// 🔥 Deduplication store with TTL (memory-safe)
+const processedEvents = new Map();
+const EVENT_TTL = 10 * 60 * 1000; // 10 minutes
+
+// --- Verify GitHub Webhook Signature ---
 function verifySignature(req) {
   const signature = req.headers["x-hub-signature-256"];
   if (!signature || !SECRET) return true;
@@ -26,14 +31,34 @@ function verifySignature(req) {
   }
 }
 
+// --- Webhook Handler ---
 app.post("/webhook", async (req, res) => {
   try {
+    // ✅ Signature verification
     if (!verifySignature(req)) {
       console.log("Invalid signature");
       return res.sendStatus(401);
     }
 
+    const deliveryId = req.headers["x-github-delivery"];
     const event = req.headers["x-github-event"];
+    const now = Date.now();
+
+    // 🔥 Cleanup old events (prevent memory leak)
+    for (const [id, timestamp] of processedEvents.entries()) {
+      if (now - timestamp > EVENT_TTL) {
+        processedEvents.delete(id);
+      }
+    }
+
+    // 🔥 Deduplication check
+    if (processedEvents.has(deliveryId)) {
+      console.log("Duplicate event ignored:", deliveryId);
+      return res.sendStatus(200);
+    }
+
+    // store event
+    processedEvents.set(deliveryId, now);
 
     const normalized = {
       event,
@@ -43,12 +68,20 @@ app.post("/webhook", async (req, res) => {
       timestamp: new Date().toISOString(),
     };
 
-    console.log("EVENT:", JSON.stringify(normalized, null, 2));
+    // ✅ Clean logs
+    console.log(
+      `EVENT: ${event} | ${normalized.repo} | PR #${normalized.pr}`
+    );
 
+    // --- Decision Engine ---
     const decisions = runDecisionEngine(event, req.body);
 
-    if (decisions) {
-      console.log("DECISIONS:", JSON.stringify(decisions, null, 2));
+    if (decisions && decisions.length > 0) {
+      console.log(
+        `DECISION: ${decisions.map(d => d.decision).join(", ")}`
+      );
+
+      // --- Enforcement ---
       await enforcePR(decisions, req.body);
     }
 
@@ -59,6 +92,7 @@ app.post("/webhook", async (req, res) => {
   }
 });
 
+// --- Health Check ---
 app.get("/", (_, res) => {
   res.send("Manthan Webhook Running");
 });
@@ -66,5 +100,5 @@ app.get("/", (_, res) => {
 const PORT = process.env.PORT || 8080;
 
 app.listen(PORT, "0.0.0.0", () => {
-  console.log(`Server running on ${PORT}`);
+  console.log(`🚀 Manthan running on port ${PORT}`);
 });

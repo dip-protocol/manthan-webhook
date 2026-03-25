@@ -20,17 +20,15 @@ function generateJWT(appId, privateKey) {
 async function getInstallationToken() {
   const appId = process.env.GITHUB_APP_ID;
   const installationId = process.env.GITHUB_INSTALLATION_ID;
-  const rawKey = process.env.GITHUB_APP_PRIVATE_KEY;
+  const rawKeyBase64 = process.env.GITHUB_APP_PRIVATE_KEY;
 
-  if (!appId || !installationId || !rawKey) {
+  if (!appId || !installationId || !rawKeyBase64) {
     console.error("Missing GitHub App environment variables");
     return null;
   }
 
-  // 🔥 FINAL FIX: reconstruct PEM safely
-  const privateKey = `-----BEGIN RSA PRIVATE KEY-----
-${rawKey.replace(/\\n/g, "\n")}
------END RSA PRIVATE KEY-----`;
+  // ✅ FINAL FIX: decode base64 → original PEM
+  const privateKey = Buffer.from(rawKeyBase64, "base64").toString("utf-8");
 
   const jwtToken = generateJWT(appId, privateKey);
 
@@ -55,7 +53,7 @@ ${rawKey.replace(/\\n/g, "\n")}
   return data.token;
 }
 
-// --- OPTIONAL: Commit Status (for blocking PRs later) ---
+// --- Commit Status (for blocking PRs) ---
 async function setCommitStatus(token, owner, repo, sha, state, description) {
   await fetch(
     `https://api.github.com/repos/${owner}/${repo}/statuses/${sha}`,
@@ -115,7 +113,7 @@ export async function enforcePR(decisions, payload) {
   const response = await res.json();
   console.log("GitHub response:", response);
 
-  // --- Set Commit Status (next phase ready) ---
+  // --- Set Commit Status ---
   const failed = decisions.some(d => d.decision === "reject");
 
   const state = failed ? "failure" : "success";
