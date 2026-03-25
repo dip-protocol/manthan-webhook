@@ -73,17 +73,24 @@ app.post("/webhook", async (req, res) => {
       `EVENT: ${event} | ${normalized.repo} | PR #${normalized.pr}`
     );
 
-    // --- Decision Engine ---
-    const decisions = runDecisionEngine(event, req.body);
+   // --- Decision Engine ---
+let decisions = runDecisionEngine(event, req.body);
 
-    if (decisions && decisions.length > 0) {
-      console.log(
-        `DECISION: ${decisions.map(d => d.decision).join(", ")}`
-      );
-
-      // --- Enforcement ---
-      await enforcePR(decisions, req.body);
+// 🔥 ensure push events also produce a decision
+if (event === "push" && (!decisions || decisions.length === 0)) {
+  decisions = [
+    {
+      contract: "MAIN_BRANCH_CHECK",
+      decision: "approve",
+      reason: "Push event validation"
     }
+  ];
+}
+
+// --- Enforcement ---
+if (decisions && decisions.length > 0) {
+  await enforcePR(decisions, req.body);
+}
 
     res.sendStatus(200);
   } catch (err) {
