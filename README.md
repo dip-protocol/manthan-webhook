@@ -1,9 +1,8 @@
 \# Manthan Webhook
 
+test reject
 
-
-Minimal, deterministic GitHub webhook ingestion service.
-
+breaking rule
 
 
 \## Purpose
