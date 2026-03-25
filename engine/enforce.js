@@ -20,23 +20,17 @@ function generateJWT(appId, privateKey) {
 async function getInstallationToken() {
   const appId = process.env.GITHUB_APP_ID;
   const installationId = process.env.GITHUB_INSTALLATION_ID;
+  const rawKey = process.env.GITHUB_APP_PRIVATE_KEY;
 
-  let privateKey = process.env.GITHUB_APP_PRIVATE_KEY;
-
-  // 🔥 CRITICAL FIX (handles Fly + PEM formatting)
-  privateKey = privateKey
-    .replace(/\\n/g, "\n")
-    .replace(/\r/g, "");
-
-  if (!appId || !privateKey || !installationId) {
+  if (!appId || !installationId || !rawKey) {
     console.error("Missing GitHub App environment variables");
     return null;
   }
 
-  if (!privateKey.includes("BEGIN RSA PRIVATE KEY")) {
-    console.error("Invalid private key format");
-    return null;
-  }
+  // 🔥 FINAL FIX: reconstruct PEM safely
+  const privateKey = `-----BEGIN RSA PRIVATE KEY-----
+${rawKey.replace(/\\n/g, "\n")}
+-----END RSA PRIVATE KEY-----`;
 
   const jwtToken = generateJWT(appId, privateKey);
 
@@ -61,6 +55,26 @@ async function getInstallationToken() {
   return data.token;
 }
 
+// --- OPTIONAL: Commit Status (for blocking PRs later) ---
+async function setCommitStatus(token, owner, repo, sha, state, description) {
+  await fetch(
+    `https://api.github.com/repos/${owner}/${repo}/statuses/${sha}`,
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        Accept: "application/vnd.github+json",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        state, // success | failure
+        description,
+        context: "manthan/decision",
+      }),
+    }
+  );
+}
+
 // --- Enforce PR Decision ---
 export async function enforcePR(decisions, payload) {
   if (!decisions || decisions.length === 0) return;
@@ -68,6 +82,7 @@ export async function enforcePR(decisions, payload) {
 
   const [owner, repo] = payload.repository.full_name.split("/");
   const issue_number = payload.pull_request.number;
+  const sha = payload.pull_request.head.sha;
 
   const token = await getInstallationToken();
 
@@ -76,12 +91,14 @@ export async function enforcePR(decisions, payload) {
     return;
   }
 
+  // --- Build Comment ---
   const body = decisions
     .map(d => `**${d.contract}** -> ${d.decision}\n${d.reason}`)
     .join("\n\n");
 
   console.log("Posting comment as Manthan-OS");
 
+  // --- Post Comment ---
   const res = await fetch(
     `https://api.github.com/repos/${owner}/${repo}/issues/${issue_number}/comments`,
     {
@@ -97,4 +114,14 @@ export async function enforcePR(decisions, payload) {
 
   const response = await res.json();
   console.log("GitHub response:", response);
+
+  // --- Set Commit Status (next phase ready) ---
+  const failed = decisions.some(d => d.decision === "reject");
+
+  const state = failed ? "failure" : "success";
+  const description = failed
+    ? "Manthan rejected PR"
+    : "Manthan approved PR";
+
+  await setCommitStatus(token, owner, repo, sha, state, description);
 }
