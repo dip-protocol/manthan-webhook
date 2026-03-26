@@ -1,22 +1,43 @@
-import { prDescriptionContract } from "../contracts/prDescription.js";
-
-const contracts = [prDescriptionContract];
+import { CONTRACTS } from "./contractsIndex.js";
 
 export function runDecisionEngine(event, payload) {
-  if (event !== "pull_request") {
-    return null;
-  }
+  try {
+    // Only process PR events
+    if (event !== "pull_request") {
+      return [];
+    }
 
-  const results = [];
+    const results = CONTRACTS.map((contract) => {
+      try {
+        const result = contract.evaluate(payload);
 
-  for (const contract of contracts) {
-    const result = contract.evaluate(payload);
-
-    results.push({
-      contract: contract.id,
-      ...result
+        return {
+          contract: contract.id,
+          version: contract.version,
+          decision: result.decision,
+          reason: result.reason || ""
+        };
+      } catch (err) {
+        return {
+          contract: contract.id,
+          version: contract.version,
+          decision: "reject",
+          reason: "Contract execution failed"
+        };
+      }
     });
-  }
 
-  return results;
+    return results;
+  } catch (err) {
+    console.error("Decision engine error:", err);
+
+    return [
+      {
+        contract: "SYSTEM_ERROR",
+        version: "v1.0.0",
+        decision: "reject",
+        reason: "Decision engine failure"
+      }
+    ];
+  }
 }

@@ -1,0 +1,5 @@
+import { PR_DESCRIPTION_REQUIRED } from "./contracts/PR_DESCRIPTION_REQUIRED.js";
+
+export const CONTRACTS = [
+  PR_DESCRIPTION_REQUIRED
+];
