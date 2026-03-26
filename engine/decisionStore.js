@@ -37,9 +37,9 @@ export function readDecisions(filters = {}) {
 
   // --- Apply filters ---
   return records.filter(r => {
-    if (filters.repo && r.repo !== filters.repo) return false;
-    if (filters.pr && String(r.pr) !== String(filters.pr)) return false;
-    if (filters.sha && r.sha !== filters.sha) return false;
+   if (filters.repo && String(r.repo).trim() !== String(filters.repo).trim()) return false;
+if (filters.pr && String(r.pr) !== String(filters.pr)) return false;
+if (filters.sha && String(r.sha).trim() !== String(filters.sha).trim()) return false;
     return true;
   });
 }

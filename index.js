@@ -4,6 +4,7 @@ import { runDecisionEngine } from "./engine/decisionEngine.js";
 import { enforcePR } from "./engine/enforce.js";
 import { saveDecision, readDecisions } from "./engine/decisionStore.js";
 import { aggregateDecisions } from "./engine/aggregation.js";
+import { diffDecisions } from "./engine/diff.js";
 
 const app = express();
 app.use(express.json());
@@ -147,29 +148,35 @@ app.get("/decisions", (req, res) => {
 
     let results = readDecisions({ repo, pr, sha });
 
+    // ✅ Empty case
     if (!results || results.length === 0) {
       return res.json({
         count: 0,
-        results: [],
-        summary: null
+        summary: null,
+        diff: null,
+        results: []
       });
     }
 
-    // 🔥 Sort latest first
+    // ✅ Sort latest first
     results.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
 
-    // 🔥 Only latest
     if (latest === "true") {
       results = [results[0]];
     }
 
-    // 🔥 Aggregate latest decision
+    // ✅ Compute summary + diff
     const latestDecision = results[0];
-    const summary = aggregateDecisions(latestDecision.decisions);
+    const previousDecision = results[1] || null;
 
+    const summary = aggregateDecisions(latestDecision.decisions);
+    const diff = diffDecisions(previousDecision, latestDecision);
+
+    // ✅ Final response
     res.json({
       count: results.length,
       summary,
+      diff,
       results
     });
 
