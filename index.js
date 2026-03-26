@@ -74,7 +74,18 @@ app.post("/webhook", async (req, res) => {
 
     // --- Decision Engine ---
     let decisions = runDecisionEngine(event, req.body);
+console.log("DECISIONS:", decisions);
+if (event === "pull_request" && (!decisions || decisions.length === 0)) {
+  console.log("No decisions from engine → applying default");
 
+  decisions = [
+    {
+      contract: "DEFAULT_CHECK",
+      decision: "approve",
+      reason: "Default PR validation"
+    }
+  ];
+}
     // 🔥 Ensure push always produces decision
     if (event === "push") {
       decisions = [
