@@ -156,7 +156,7 @@ app.get("/decisions", (req, res) => {
   try {
     const { repo, pr, sha, latest } = req.query;
 
-    app.get("/decisions", (req, res) => {
+    let results = readDecisions({ repo, pr, sha });
 
     if (!results || results.length === 0) {
       return res.json({
