@@ -58,24 +58,33 @@ async function getInstallationToken() {
   }
 }
 
-// --- Set Commit Status ---
+// --- Set Commit Status (FIXED) ---
 async function setCommitStatus(token, owner, repo, sha, state, description) {
-  await fetch(
+  console.log("🚀 Setting status:", state, sha);
+
+  const res = await fetch(
     `https://api.github.com/repos/${owner}/${repo}/statuses/${sha}`,
     {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${token}`,
+        Authorization: `Bearer ${token}`, // ✅ correct
         Accept: "application/vnd.github+json",
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
         state,
-        description,
         context: "manthan/decision",
+        description,
       }),
     }
   );
+
+  const data = await res.json();
+  console.log("📊 Status response:", data);
+
+  if (!res.ok) {
+    console.error("❌ Failed to set commit status");
+  }
 }
 
 // --- Enforce PR Decision ---
@@ -84,7 +93,7 @@ export async function enforcePR(decisions, payload) {
 
   const isPR = !!payload.pull_request;
 
-  // Allow push events
+  // Ignore irrelevant events
   if (!isPR && !payload.after) return;
 
   const [owner, repo] = payload.repository.full_name.split("/");
@@ -107,7 +116,7 @@ export async function enforcePR(decisions, payload) {
 
 ### ${failedCount > 0 ? "❌ REJECTED" : "✅ APPROVED"}
 
-${failedCount > 0 
+${failedCount > 0
   ? "Some checks failed. Please review the details below."
   : "All checks passed. This PR meets the required contracts."
 }
@@ -147,7 +156,7 @@ _Manthan enforces deterministic PR decisions using predefined contracts._
 
   console.log("🚀 Posting comment as Manthan-OS");
 
-  // --- Post Comment (PR only) ---
+  // --- Post Comment ---
   if (issue_number) {
     const res = await fetch(
       `https://api.github.com/repos/${owner}/${repo}/issues/${issue_number}/comments`,
@@ -166,7 +175,7 @@ _Manthan enforces deterministic PR decisions using predefined contracts._
     console.log("💬 GitHub comment response:", response);
   }
 
-  // --- Set Commit Status ---
+  // --- Set Commit Status (THIS BLOCKS MERGE) ---
   const failed = decisions.some(d => d.decision === "reject");
 
   const state = failed ? "failure" : "success";
