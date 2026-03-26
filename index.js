@@ -125,7 +125,7 @@ if (event === "pull_request") {
     ];
   }
 
-  await enforcePR(null, req.body, decisions); // ✅ ADD THIS LINE
+  await enforcePR(decisions, req.body); // ✅ ADD THIS LINE
 }
     res.sendStatus(200);
   } catch (err) {
