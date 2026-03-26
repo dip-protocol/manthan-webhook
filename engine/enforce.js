@@ -89,6 +89,19 @@ async function setCommitStatus(token, owner, repo, sha, state, description) {
 
 // --- Enforce PR Decision ---
 export async function enforcePR(aggregated, payload, decisions = []) {
+// 🚨 FAIL-SAFE: never allow empty decisions
+if (!decisions || decisions.length === 0) {
+  console.error("❌ NO DECISIONS — FAILING SAFE");
+
+  decisions = [
+    {
+      contract: "SYSTEM_FALLBACK",
+      version: "v1.0.0",
+      decision: "reject",
+      reason: "No decisions generated"
+    }
+  ];
+}
   if (!aggregated) return;
 
   const isPR = !!payload.pull_request;
@@ -176,12 +189,11 @@ _Manthan enforces deterministic PR decisions using predefined contracts._
   }
 
   // --- Set Commit Status (THIS BLOCKS MERGE) ---
-  const state =
-  aggregated.finalDecision === "reject" ? "failure" : "success";
+  const hasReject = decisions.some(d => d.decision === "reject");
 
-const description =
-  aggregated.finalDecision === "reject"
-    ? "Manthan rejected PR"
-    : "Manthan approved PR";
-  await setCommitStatus(token, owner, repo, sha, state, description);
+const state = hasReject ? "failure" : "success";
+
+const description = hasReject
+  ? "Manthan rejected PR"
+  : "Manthan approved PR";  await setCommitStatus(token, owner, repo, sha, state, description);
 }

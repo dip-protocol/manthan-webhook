@@ -111,8 +111,8 @@ console.log("DECISIONS:", decisions);
     console.log("SAVING DECISION:", record.id);
     saveDecision(record);
 
-    // --- Enforcement ---
-    if (event === "pull_request") {
+// --- Enforcement ---
+if (event === "pull_request") {
   if (!decisions || decisions.length === 0) {
     console.log("❌ No decision → forcing failure");
 
@@ -125,9 +125,8 @@ console.log("DECISIONS:", decisions);
     ];
   }
 
-  await enforcePR(decisions, req.body);
+  await enforcePR(null, req.body, decisions); // ✅ ADD THIS LINE
 }
-
     res.sendStatus(200);
   } catch (err) {
     console.error("Webhook error:", err);
