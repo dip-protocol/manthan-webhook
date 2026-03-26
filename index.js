@@ -11,11 +11,11 @@ app.use(express.json());
 
 const SECRET = process.env.GITHUB_SECRET;
 
-// 🔥 Deduplication store with TTL (memory-safe)
+// 🔥 Deduplication store with TTL
 const processedEvents = new Map();
-const EVENT_TTL = 10 * 60 * 1000; // 10 minutes
+const EVENT_TTL = 10 * 60 * 1000;
 
-// --- Verify GitHub Webhook Signature ---
+// --- Verify Signature ---
 function verifySignature(req) {
   const signature = req.headers["x-hub-signature-256"];
   if (!signature || !SECRET) return true;
@@ -34,10 +34,9 @@ function verifySignature(req) {
   }
 }
 
-// --- Webhook Handler ---
+// --- Webhook ---
 app.post("/webhook", async (req, res) => {
   try {
-    // ✅ Signature verification
     if (!verifySignature(req)) {
       console.log("Invalid signature");
       return res.sendStatus(401);
@@ -47,14 +46,13 @@ app.post("/webhook", async (req, res) => {
     const event = req.headers["x-github-event"];
     const now = Date.now();
 
-    // 🔥 Cleanup old events
+    // Cleanup TTL
     for (const [id, timestamp] of processedEvents.entries()) {
       if (now - timestamp > EVENT_TTL) {
         processedEvents.delete(id);
       }
     }
 
-    // 🔥 Deduplication check
     if (processedEvents.has(deliveryId)) {
       console.log("Duplicate event ignored:", deliveryId);
       return res.sendStatus(200);
@@ -70,36 +68,46 @@ app.post("/webhook", async (req, res) => {
       timestamp: new Date().toISOString(),
     };
 
-    console.log(
-      `EVENT: ${event} | ${normalized.repo} | PR #${normalized.pr}`
-    );
+    console.log(`EVENT: ${event} | ${normalized.repo} | PR #${normalized.pr}`);
 
     // --- Decision Engine ---
     let decisions = [];
 
-if (event === "pull_request") {
-  const action = req.body.action;
+    if (event === "pull_request") {
+      const action = req.body.action;
 
-  if (
-    action === "opened" ||
-    action === "edited" ||
-    action === "synchronize" ||
-    action === "reopened"
-  ) {
-    decisions = runDecisionEngine(event, req.body);
-  } else {
-    console.log("Ignoring PR action:", action);
-    return res.sendStatus(200);
-  }
-} else {
-  // non-PR events → no enforcement decisions
-  decisions = runDecisionEngine(event, req.body);
-}
-console.log("DECISIONS:", decisions);
-    // 🔥 Ensure push always produces decision
-    
+      if (
+        action === "opened" ||
+        action === "edited" ||
+        action === "synchronize" ||
+        action === "reopened"
+      ) {
+        decisions = runDecisionEngine(event, req.body);
+      } else {
+        console.log("Ignoring PR action:", action);
+        return res.sendStatus(200);
+      }
+    } else {
+      decisions = runDecisionEngine(event, req.body);
+    }
 
-    // --- v0.3: Save Decision ---
+    console.log("DECISIONS:", decisions);
+
+    // --- Load Previous Decision ---
+    const history = readDecisions({
+      repo: normalized.repo,
+      pr: normalized.pr
+    });
+
+    const previousDecision =
+      history.length > 0 ? history[history.length - 1] : null;
+
+    // --- Compute Diff ---
+    const diff = diffDecisions(previousDecision, {
+      decisions
+    });
+
+    // --- Save Decision ---
     const record = {
       id: deliveryId,
       event,
@@ -113,50 +121,43 @@ console.log("DECISIONS:", decisions);
     console.log("SAVING DECISION:", record.id);
     saveDecision(record);
 
-// --- Enforcement ---
-if (event === "pull_request") {
-  if (!decisions || decisions.length === 0) {
-    console.log("❌ No decisions → forcing fallback");
+    // --- Enforcement ---
+    if (event === "pull_request") {
+      if (!decisions || decisions.length === 0) {
+        console.log("❌ No decision → forcing failure");
 
-    decisions = [
-      {
-        contract: "SYSTEM_FALLBACK",
-        version: "v1.0.0",
-        decision: "reject",
-        reason: "No decisions generated"
+        decisions = [
+          {
+            contract: "SYSTEM_GUARD",
+            decision: "reject",
+            reason: "No decision produced by engine"
+          }
+        ];
       }
-    ];
-  }
 
-  console.log("FINAL DECISIONS:", decisions);
+      await enforcePR(decisions, req.body, diff);
+    }
 
-  const latestDecision = { decisions };
-const previousDecision = null; // safe fallback for now
-
-const diff = diffDecisions(previousDecision, latestDecision);
-
-await enforcePR(decisions, req.body, diff);
-}
     res.sendStatus(200);
+
   } catch (err) {
     console.error("Webhook error:", err);
     res.sendStatus(500);
   }
 });
 
-// --- Health Check ---
+// --- Health ---
 app.get("/", (_, res) => {
   res.send("Manthan Webhook Running");
 });
 
-// --- Query Decisions (v0.3.1) ---
+// --- Query API ---
 app.get("/decisions", (req, res) => {
   try {
     const { repo, pr, sha, latest } = req.query;
 
     let results = readDecisions({ repo, pr, sha });
 
-    // ✅ Empty case
     if (!results || results.length === 0) {
       return res.json({
         count: 0,
@@ -166,21 +167,19 @@ app.get("/decisions", (req, res) => {
       });
     }
 
-    // ✅ Sort latest first
+    // Sort latest first
     results.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
 
     if (latest === "true") {
       results = [results[0]];
     }
 
-    // ✅ Compute summary + diff
     const latestDecision = results[0];
     const previousDecision = results[1] || null;
 
     const summary = aggregateDecisions(latestDecision.decisions);
     const diff = diffDecisions(previousDecision, latestDecision);
 
-    // ✅ Final response
     res.json({
       count: results.length,
       summary,
@@ -193,7 +192,8 @@ app.get("/decisions", (req, res) => {
     res.sendStatus(500);
   }
 });
-// --- Server Start ---
+
+// --- Start ---
 const PORT = process.env.PORT || 8080;
 
 app.listen(PORT, "0.0.0.0", () => {
