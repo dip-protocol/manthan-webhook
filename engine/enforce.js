@@ -58,7 +58,7 @@ async function getInstallationToken() {
   }
 }
 
-// --- Set Commit Status (FIXED) ---
+// --- Set Commit Status ---
 async function setCommitStatus(token, owner, repo, sha, state, description) {
   console.log("🚀 Setting status:", state, sha);
 
@@ -67,7 +67,7 @@ async function setCommitStatus(token, owner, repo, sha, state, description) {
     {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${token}`, // ✅ correct
+        Authorization: `Bearer ${token}`,
         Accept: "application/vnd.github+json",
         "Content-Type": "application/json",
       },
@@ -88,112 +88,61 @@ async function setCommitStatus(token, owner, repo, sha, state, description) {
 }
 
 // --- Enforce PR Decision ---
-export async function enforcePR(aggregated, payload, decisions = []) {
-// 🚨 FAIL-SAFE: never allow empty decisions
-if (!decisions || decisions.length === 0) {
-  console.error("❌ NO DECISIONS — FAILING SAFE");
+export async function enforcePR(decisions, payload) {
 
-  decisions = [
-    {
-      contract: "SYSTEM_FALLBACK",
-      version: "v1.0.0",
-      decision: "reject",
-      reason: "No decisions generated"
-    }
-  ];
-}
-  if (!aggregated) return;
+  // ✅ Safety fallback
+  if (!Array.isArray(decisions) || decisions.length === 0) {
+    console.log("❌ NO DECISIONS");
 
-  const isPR = !!payload.pull_request;
-
-  // Ignore irrelevant events
-  if (!isPR && !payload.after) return;
+    decisions = [
+      {
+        contract: "SYSTEM_FALLBACK",
+        decision: "reject",
+        reason: "No decisions generated"
+      }
+    ];
+  } else {
+    console.log("✅ USING REAL DECISIONS");
+  }
 
   const [owner, repo] = payload.repository.full_name.split("/");
-  const issue_number = payload.pull_request?.number;
-  const sha = payload.pull_request?.head?.sha || payload.after;
+  const issue_number = payload.pull_request.number;
+  const sha = payload.pull_request.head.sha;
 
   const token = await getInstallationToken();
 
   if (!token) {
-    console.error("No installation token available");
+    console.error("❌ No installation token");
     return;
   }
 
-  // --- Build Comment ---
-  const failedCount = decisions.filter(d => d.decision === "reject").length;
-  const passedCount = decisions.length - failedCount;
-
-  const body = `
-## 🤖 Manthan OS — Decision Report
-
-### ${failedCount > 0 ? "❌ REJECTED" : "✅ APPROVED"}
-
-${failedCount > 0
-  ? "Some checks failed. Please review the details below."
-  : "All checks passed. This PR meets the required contracts."
-}
-
----
-
-### 📊 Summary
-- Total checks: ${decisions.length}
-- Failed: ${failedCount}
-- Passed: ${passedCount}
-
----
-
-<details>
-<summary><strong>🔍 View detailed decision breakdown</strong></summary>
-
-${decisions.map(d => {
-  const isReject = d.decision === "reject";
-
-  return `
-### ${isReject ? "❌ REJECTED" : "✅ APPROVED"} — ${d.contract}
-
-**Reason:**  
-${d.reason}
-
-${isReject ? `**Action Required:**  
-- Fix the issue above and update the PR` : ""}
-`;
-}).join("\n")}
-
-</details>
-
----
-
-_Manthan enforces deterministic PR decisions using predefined contracts._
-`;
-
-  console.log("🚀 Posting comment as Manthan-OS");
-
-  // --- Post Comment ---
-  if (issue_number) {
-    const res = await fetch(
-      `https://api.github.com/repos/${owner}/${repo}/issues/${issue_number}/comments`,
-      {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          Accept: "application/vnd.github+json",
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ body }),
-      }
-    );
-
-    const response = await res.json();
-    console.log("💬 GitHub comment response:", response);
-  }
-
-  // --- Set Commit Status (THIS BLOCKS MERGE) ---
   const hasReject = decisions.some(d => d.decision === "reject");
 
-const state = hasReject ? "failure" : "success";
+  // --- Post Comment ---
+  await fetch(
+    `https://api.github.com/repos/${owner}/${repo}/issues/${issue_number}/comments`,
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        Accept: "application/vnd.github+json",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        body: JSON.stringify(decisions, null, 2)
+      }),
+    }
+  );
 
-const description = hasReject
-  ? "Manthan rejected PR"
-  : "Manthan approved PR";  await setCommitStatus(token, owner, repo, sha, state, description);
+  console.log("💬 Comment posted");
+
+  // --- Set Commit Status ---
+  await setCommitStatus(
+    token,
+    owner,
+    repo,
+    sha,
+    hasReject ? "failure" : "success",
+    hasReject ? "Manthan rejected PR" : "Manthan approved PR"
+  );
 }
