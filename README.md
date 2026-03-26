@@ -4,9 +4,9 @@
 gy
 Minimal, deterministic GitHub webhook ingestion service.
 
+cc
 
-
-\## Purpose
+\## Purposeff
 
 gudd
 
