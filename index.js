@@ -119,7 +119,7 @@ app.post("/webhook", async (req, res) => {
     };
 
     console.log("SAVING DECISION:", record.id);
-    saveDecision(record);
+    await saveDecision(record);
 
     // --- Enforcement ---
     if (event === "pull_request") {
@@ -156,7 +156,7 @@ app.get("/decisions", (req, res) => {
   try {
     const { repo, pr, sha, latest } = req.query;
 
-    let results = readDecisions({ repo, pr, sha });
+    app.get("/decisions", (req, res) => {
 
     if (!results || results.length === 0) {
       return res.json({
