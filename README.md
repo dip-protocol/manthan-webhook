@@ -11,7 +11,7 @@ cff
 cc
 ddxx
 This service acts as the \*\*ingress layer\*\* for Manthan — a decision operating system.
-
+dxd
 
 
 It receives GitHub events (currently Pull Requests), validates them, normalizes them, and prepares them for deterministic decision processing.
