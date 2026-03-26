@@ -116,18 +116,21 @@ console.log("DECISIONS:", decisions);
 // --- Enforcement ---
 if (event === "pull_request") {
   if (!decisions || decisions.length === 0) {
-    console.log("❌ No decision → forcing failure");
+    console.log("❌ No decisions → forcing fallback");
 
     decisions = [
       {
-        contract: "SYSTEM_GUARD",
+        contract: "SYSTEM_FALLBACK",
+        version: "v1.0.0",
         decision: "reject",
-        reason: "No decision produced by engine"
+        reason: "No decisions generated"
       }
     ];
   }
 
-  await enforcePR(decisions, req.body); // ✅ ADD THIS LINE
+  console.log("FINAL DECISIONS:", decisions);
+
+  await enforcePR(decisions, req.body);
 }
     res.sendStatus(200);
   } catch (err) {
