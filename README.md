@@ -5,7 +5,7 @@ fff
 Minimal, deterministic GitHub webhook ingestion service.
 
 ddd
-cff
+cff cc
 \## Purpose
 
 cc
