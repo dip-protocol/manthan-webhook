@@ -1,17 +1,17 @@
-export function aggregate(decisions) {
+export function aggregateDecisions(decisions = []) {
   if (!decisions || decisions.length === 0) {
     return {
       finalDecision: "reject",
-      reason: "No decisions available"
+      reasons: ["No decisions produced"],
+      total: 0
     };
   }
 
-  const hasReject = decisions.some(d => d.decision === "reject");
+  const rejects = decisions.filter(d => d.decision === "reject");
 
   return {
-    finalDecision: hasReject ? "reject" : "approve",
-    reason: hasReject
-      ? "At least one contract failed"
-      : "All contracts passed"
+    finalDecision: rejects.length > 0 ? "reject" : "approve",
+    reasons: rejects.map(d => d.reason),
+    total: decisions.length
   };
 }

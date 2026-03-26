@@ -3,6 +3,7 @@ import crypto from "crypto";
 import { runDecisionEngine } from "./engine/decisionEngine.js";
 import { enforcePR } from "./engine/enforce.js";
 import { saveDecision, readDecisions } from "./engine/decisionStore.js";
+import { aggregateDecisions } from "./engine/aggregation.js";
 
 const app = express();
 app.use(express.json());
@@ -142,20 +143,41 @@ app.get("/", (_, res) => {
 // --- Query Decisions (v0.3.1) ---
 app.get("/decisions", (req, res) => {
   try {
-    const { repo, pr, sha } = req.query;
+    const { repo, pr, sha, latest } = req.query;
 
-    const results = readDecisions({ repo, pr, sha });
+    let results = readDecisions({ repo, pr, sha });
+
+    if (!results || results.length === 0) {
+      return res.json({
+        count: 0,
+        results: [],
+        summary: null
+      });
+    }
+
+    // 🔥 Sort latest first
+    results.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+
+    // 🔥 Only latest
+    if (latest === "true") {
+      results = [results[0]];
+    }
+
+    // 🔥 Aggregate latest decision
+    const latestDecision = results[0];
+    const summary = aggregateDecisions(latestDecision.decisions);
 
     res.json({
       count: results.length,
+      summary,
       results
     });
+
   } catch (err) {
     console.error("Query error:", err);
     res.sendStatus(500);
   }
 });
-
 // --- Server Start ---
 const PORT = process.env.PORT || 8080;
 
