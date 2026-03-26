@@ -93,7 +93,7 @@ app.post("/webhook", async (req, res) => {
 
     console.log("DECISIONS:", decisions);
 
-    // --- Load Previous Decision ---
+    // --- Load Previous Decisions ---
     const history = readDecisions({
       repo: normalized.repo,
       pr: normalized.pr
@@ -193,7 +193,7 @@ app.get("/decisions", (req, res) => {
   }
 });
 
-// --- Start ---
+// --- Server Start ---
 const PORT = process.env.PORT || 8080;
 
 app.listen(PORT, "0.0.0.0", () => {
