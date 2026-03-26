@@ -1,46 +1,63 @@
-import { createClient } from "@supabase/supabase-js";
+import fs from "fs";
 
-const supabase = createClient(
-  process.env.SUPABASE_URL,
-  process.env.SUPABASE_ANON_KEY
-);
+const DIR = "./data";
+const FILE = "./data/decisions.log";
 
-// --- Save Decision ---
-export async function saveDecision(record) {
-  const { error } = await supabase
-    .from("decisions")
-    .insert([
-      {
-        id: record.id,
-        repo: record.repo,
-        pr: String(record.pr),
-        sha: record.sha,
-        event: record.event,
-        decisions: record.decisions,
-      }
-    ]);
-
-  if (error) {
-    console.error("❌ Supabase insert error:", error);
-  } else {
-    console.log("✅ Decision saved to DB");
+// Ensure directory exists
+function ensureDir() {
+  if (!fs.existsSync(DIR)) {
+    fs.mkdirSync(DIR, { recursive: true });
   }
 }
 
+// Ensure file exists
+function ensureFile() {
+  ensureDir();
+  if (!fs.existsSync(FILE)) {
+    fs.writeFileSync(FILE, "");
+  }
+}
+
+// --- Save Decision ---
+export function saveDecision(record) {
+  ensureFile();
+
+  const line = JSON.stringify(record) + "\n";
+  fs.appendFileSync(FILE, line);
+}
+
 // --- Read Decisions ---
-export async function readDecisions(filters = {}) {
-  let query = supabase.from("decisions").select("*");
+export function readDecisions(filters = {}) {
+  try {
+    ensureFile();
 
-  if (filters.repo) query = query.eq("repo", filters.repo);
-  if (filters.pr) query = query.eq("pr", String(filters.pr));
-  if (filters.sha) query = query.eq("sha", filters.sha);
+    const raw = fs.readFileSync(FILE, "utf-8");
 
-  const { data, error } = await query;
+    if (!raw || raw.trim() === "") return [];
 
-  if (error) {
-    console.error("❌ Supabase read error:", error);
+    const lines = raw
+      .split("\n")
+      .filter(Boolean);
+
+    const records = lines
+      .map(line => {
+        try {
+          return JSON.parse(line);
+        } catch {
+          return null;
+        }
+      })
+      .filter(Boolean);
+
+    return records.filter(r => {
+      if (filters.repo && String(r.repo).trim() !== String(filters.repo).trim()) return false;
+      if (filters.pr && String(r.pr) !== String(filters.pr)) return false;
+      if (filters.sha && String(r.sha).trim() !== String(filters.sha).trim()) return false;
+      return true;
+    });
+
+  } catch (err) {
+    console.error("❌ readDecisions error:", err);
     return [];
   }
-
-  return data || [];
 }

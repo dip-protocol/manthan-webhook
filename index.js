@@ -174,12 +174,16 @@ app.get("/decisions", (req, res) => {
       results = [results[0]];
     }
 
-    const latestDecision = results[0];
-    const previousDecision = results[1] || null;
+    const latestDecision = results[0] || null;
+const previousDecision = results[1] || null;
 
-    const summary = aggregateDecisions(latestDecision.decisions);
-    const diff = diffDecisions(previousDecision, latestDecision);
+const summary = latestDecision?.decisions
+  ? aggregateDecisions(latestDecision.decisions)
+  : null;
 
+const diff = latestDecision
+  ? diffDecisions(previousDecision, latestDecision)
+  : null;
     res.json({
       count: results.length,
       summary,
