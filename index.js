@@ -73,30 +73,29 @@ app.post("/webhook", async (req, res) => {
     );
 
     // --- Decision Engine ---
-    let decisions = runDecisionEngine(event, req.body);
-console.log("DECISIONS:", decisions);
-if (event === "pull_request" && (!decisions || decisions.length === 0)) {
-  console.log("No decisions from engine → applying default");
+    let decisions = [];
 
-  decisions = [
-    {
-      contract: "DEFAULT_CHECK",
-      decision: "approve",
-      reason: "Default PR validation"
-    }
-  ];
+if (event === "pull_request") {
+  const action = req.body.action;
+
+  if (
+    action === "opened" ||
+    action === "edited" ||
+    action === "synchronize" ||
+    action === "reopened"
+  ) {
+    decisions = runDecisionEngine(event, req.body);
+  } else {
+    console.log("Ignoring PR action:", action);
+    return res.sendStatus(200);
+  }
+} else {
+  // non-PR events → no enforcement decisions
+  decisions = runDecisionEngine(event, req.body);
 }
+console.log("DECISIONS:", decisions);
     // 🔥 Ensure push always produces decision
-    if (event === "push") {
-      decisions = [
-        {
-          contract: "MAIN_BRANCH_CHECK",
-          decision: "approve",
-          reason: "Push event validation"
-        }
-      ];
-      console.log("DECISION: approve (push)");
-    }
+    
 
     // --- v0.3: Save Decision ---
     const record = {
@@ -113,9 +112,21 @@ if (event === "pull_request" && (!decisions || decisions.length === 0)) {
     saveDecision(record);
 
     // --- Enforcement ---
-    if (decisions && decisions.length > 0) {
-      await enforcePR(decisions, req.body);
-    }
+    if (event === "pull_request") {
+  if (!decisions || decisions.length === 0) {
+    console.log("❌ No decision → forcing failure");
+
+    decisions = [
+      {
+        contract: "SYSTEM_GUARD",
+        decision: "reject",
+        reason: "No decision produced by engine"
+      }
+    ];
+  }
+
+  await enforcePR(decisions, req.body);
+}
 
     res.sendStatus(200);
   } catch (err) {
