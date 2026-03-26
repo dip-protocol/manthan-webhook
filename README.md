@@ -6,7 +6,7 @@ Minimal, deterministic GitHub webhook ingestion service.
 
 
 
-\## Purpose
+\## Purposeff
 
 
 
