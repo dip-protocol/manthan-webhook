@@ -88,7 +88,7 @@ async function setCommitStatus(token, owner, repo, sha, state, description) {
 }
 
 // --- Enforce PR Decision ---
-export async function enforcePR(decisions, payload) {
+export async function enforcePR(decisions, payload, diff = null) {
 
   // ✅ Safety fallback
   if (!Array.isArray(decisions) || decisions.length === 0) {
@@ -118,7 +118,42 @@ export async function enforcePR(decisions, payload) {
 
   const hasReject = decisions.some(d => d.decision === "reject");
 
-  // --- Post Comment ---
+  // --- Build UI ---
+  const summary = hasReject
+    ? "❌ PR REJECTED"
+    : "✅ PR APPROVED";
+
+  const details = decisions.map(d => `
+- **${d.contract}** → ${d.decision.toUpperCase()}
+  - ${d.reason}
+`).join("\n");
+
+  let diffSection = "";
+
+  if (diff && diff.length > 0) {
+    diffSection = `
+---
+
+### 🔄 What Changed
+${diff.map(d => `- ${d}`).join("\n")}
+`;
+  }
+
+  const body = `
+## 🤖 Manthan Decision
+
+### ${summary}
+
+### 📊 Details
+${details}
+
+${diffSection}
+
+---
+_Manthan ensures deterministic PR validation_
+`;
+
+  // ✅ THIS WAS MISSING (CRITICAL FIX)
   await fetch(
     `https://api.github.com/repos/${owner}/${repo}/issues/${issue_number}/comments`,
     {
@@ -128,9 +163,7 @@ export async function enforcePR(decisions, payload) {
         Accept: "application/vnd.github+json",
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({
-        body: JSON.stringify(decisions, null, 2)
-      }),
+      body: JSON.stringify({ body }),
     }
   );
 

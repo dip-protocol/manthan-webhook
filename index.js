@@ -130,7 +130,12 @@ if (event === "pull_request") {
 
   console.log("FINAL DECISIONS:", decisions);
 
-  await enforcePR(decisions, req.body);
+  const latestDecision = { decisions };
+const previousDecision = null; // safe fallback for now
+
+const diff = diffDecisions(previousDecision, latestDecision);
+
+await enforcePR(decisions, req.body, diff);
 }
     res.sendStatus(200);
   } catch (err) {
