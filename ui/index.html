@@ -54,6 +54,18 @@
       color: #444;
     }
 
+    .graph {
+      margin-top: 10px;
+      padding-top: 8px;
+      border-top: 1px dashed #ccc;
+      font-size: 13px;
+    }
+
+    .graph-title {
+      font-weight: bold;
+      margin-bottom: 5px;
+    }
+
     small {
       color: #666;
     }
@@ -79,7 +91,7 @@ async function load() {
     return;
   }
 
-  // 🔥 GROUP BY PR
+  // --- GROUP BY PR ---
   const grouped = {};
 
   data.results.forEach(item => {
@@ -88,7 +100,7 @@ async function load() {
     grouped[key].push(item);
   });
 
-  // 🔥 RENDER GROUPS
+  // --- RENDER ---
   Object.keys(grouped).forEach(pr => {
 
     const groupDiv = document.createElement("div");
@@ -101,7 +113,6 @@ async function load() {
     const timeline = document.createElement("div");
     timeline.className = "timeline";
 
-    // sort events old → new
     const events = grouped[pr].sort(
       (a, b) => new Date(a.created_at) - new Date(b.created_at)
     );
@@ -141,6 +152,45 @@ async function load() {
     });
 
     groupDiv.appendChild(timeline);
+
+    // --- GRAPH (TRANSITIONS) ---
+    const graphDiv = document.createElement("div");
+    graphDiv.className = "graph";
+
+    const title = document.createElement("div");
+    title.className = "graph-title";
+    title.innerText = "Transitions";
+    graphDiv.appendChild(title);
+
+    const transitions = {};
+
+    for (let i = 1; i < events.length; i++) {
+      const prev = events[i - 1].decisions?.[0]?.decision;
+      const curr = events[i].decisions?.[0]?.decision;
+
+      if (!prev || !curr) continue;
+
+      const key = `${prev}->${curr}`;
+      transitions[key] = (transitions[key] || 0) + 1;
+    }
+
+    Object.keys(transitions).forEach(key => {
+      const [from, to] = key.split("->");
+
+      const row = document.createElement("div");
+
+      row.innerHTML = `
+        🔗 ${from} → ${to}
+        <small>(x${transitions[key]})</small>
+      `;
+
+      graphDiv.appendChild(row);
+    });
+
+    if (Object.keys(transitions).length > 0) {
+      groupDiv.appendChild(graphDiv);
+    }
+
     container.appendChild(groupDiv);
   });
 }
