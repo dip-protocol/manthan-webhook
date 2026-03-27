@@ -13,29 +13,34 @@
     }
 
     h1 {
-      font-size: 44px;
+      font-size: 48px;
       margin-bottom: 10px;
     }
 
     .tagline {
-      font-size: 20px;
+      font-size: 22px;
       color: #cbd5f5;
       margin-bottom: 25px;
     }
 
-    .cta {
-      margin-top: 30px;
+    .pitch {
+      font-size: 18px;
+      margin-bottom: 30px;
+      color: #94a3b8;
     }
 
-    a.button {
+    .cta a {
       padding: 14px 24px;
+      margin: 8px;
+      border-radius: 8px;
+      text-decoration: none;
+      font-weight: bold;
+      display: inline-block;
+    }
+
+    .primary {
       background: #22c55e;
       color: black;
-      text-decoration: none;
-      border-radius: 8px;
-      margin: 8px;
-      display: inline-block;
-      font-weight: bold;
     }
 
     .secondary {
@@ -45,7 +50,7 @@
 
     .section {
       margin-top: 60px;
-      max-width: 800px;
+      max-width: 850px;
       margin-left: auto;
       margin-right: auto;
       text-align: left;
@@ -70,12 +75,16 @@
 <h1>🧠 Manthan</h1>
 
 <div class="tagline">
-  Infrastructure for <span class="highlight">trustworthy decision-making</span> in software
+  The Decision Layer for Software
+</div>
+
+<div class="pitch">
+  Like CI/CD made code reliable, Manthan makes <span class="highlight">decisions reliable</span>.
 </div>
 
 <div class="cta">
-  <a class="button" href="/app">View Live System</a>
-  <a class="button secondary" href="/decisions">View API</a>
+  <a class="primary" href="/app">View Live System</a>
+  <a class="secondary" href="/decisions">View API</a>
 </div>
 
 <!-- PROBLEM -->
@@ -83,11 +92,28 @@
   <h2>The Problem</h2>
 
   <div class="box">
-    Software decisions today are inconsistent, undocumented, and impossible to audit.
+    Software decisions (PR approvals, reviews, policies) are:
+    <br/><br/>
+    → inconsistent<br/>
+    → undocumented<br/>
+    → impossible to audit
   </div>
 
   <div class="box">
-    PR approvals, reviews, and policies are human-driven and non-deterministic.
+    Today, critical decisions rely on humans and heuristics — not systems.
+  </div>
+</div>
+
+<!-- SHIFT -->
+<div class="section">
+  <h2>The Shift</h2>
+
+  <div class="box">
+    Code became reliable with compilers and CI/CD.
+  </div>
+
+  <div class="box">
+    Decisions are the next layer — and they need infrastructure.
   </div>
 </div>
 
@@ -96,23 +122,16 @@
   <h2>The Solution</h2>
 
   <div class="box">
-    Manthan turns decisions into a <span class="highlight">deterministic system</span>.
+    Manthan turns decisions into a <span class="highlight">deterministic, auditable system</span>.
   </div>
 
   <div class="box">
-    Every decision is evaluated, explained, stored, and enforced automatically.
-  </div>
-</div>
-
-<!-- HOW IT WORKS -->
-<div class="section">
-  <h2>How It Works</h2>
-
-  <div class="box">
-    → Evaluate: contracts run on every PR<br/>
-    → Decide: deterministic decision engine<br/>
-    → Store: persistent audit trail (Supabase)<br/>
-    → Enforce: GitHub status + comments
+    Every decision is:
+    <br/><br/>
+    → evaluated (contracts)<br/>
+    → decided (engine)<br/>
+    → stored (truth layer)<br/>
+    → enforced (GitHub)
   </div>
 </div>
 
@@ -121,13 +140,33 @@
   <h2>Live Proof</h2>
 
   <div class="box">
-    What you see in the live system:
+    This is not a demo.
     <br/><br/>
-    → Real-time decisions<br/>
-    → Full history per PR<br/>
-    → Decision evolution (reject → approve)<br/>
-    → Reason + audit trail<br/>
-    → Transition graph
+    The live system shows:
+    <br/><br/>
+    → real PR decisions<br/>
+    → full history per PR<br/>
+    → decision evolution (reject → approve)<br/>
+    → reasoning + audit trail<br/>
+    → transition graph
+  </div>
+</div>
+
+<!-- CATEGORY -->
+<div class="section">
+  <h2>Category</h2>
+
+  <div class="box">
+    Manthan defines a new category:
+    <br/><br/>
+    <span class="highlight">Decision Infrastructure</span>
+  </div>
+
+  <div class="box">
+    The layer between:
+    <br/><br/>
+    → code (what to run)<br/>
+    → people (what to decide)
   </div>
 </div>
 
@@ -136,12 +175,12 @@
   <h2>Vision</h2>
 
   <div class="box">
-    A world where every software decision is:
+    A world where every decision in software is:
     <br/><br/>
-    → Traceable<br/>
-    → Auditable<br/>
-    → Deterministic<br/>
-    → Enforceable
+    → deterministic<br/>
+    → traceable<br/>
+    → auditable<br/>
+    → enforceable
   </div>
 </div>
 
