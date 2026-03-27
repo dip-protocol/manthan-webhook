@@ -5,6 +5,8 @@ import { enforcePR } from "./engine/enforce.js";
 import { saveDecision, readDecisions } from "./engine/decisionStore.js";
 import { aggregateDecisions } from "./engine/aggregation.js";
 import { diffDecisions } from "./engine/diff.js";
+const { supabase } = require("./supabaseClient");
+const { mirrorToSupabase } = require("./supabaseMirror");
 
 const app = express();
 app.use(express.json());
@@ -118,8 +120,14 @@ app.post("/webhook", async (req, res) => {
       timestamp: new Date().toISOString()
     };
 
-    console.log("SAVING DECISION:", record.id);
-    await saveDecision(record);
+   console.log("SAVING DECISION:", record.id);
+await saveDecision(record);
+
+// 🔥 NON-BLOCKING MIRROR (v0.4)
+mirrorToSupabase(supabase, record);
+
+// 👇 ADD THIS LINE (THIS IS THE ONLY CHANGE)
+mirrorToSupabase(supabase, record);
 
     // --- Enforcement ---
     if (event === "pull_request") {
