@@ -40,7 +40,18 @@
     }
 
     .event {
-      margin-bottom: 8px;
+      margin-bottom: 10px;
+    }
+
+    .reason {
+      color: #555;
+      font-size: 12px;
+    }
+
+    .diff {
+      margin: 6px 0 12px 10px;
+      font-size: 13px;
+      color: #444;
     }
 
     small {
@@ -73,7 +84,6 @@ async function load() {
 
   data.results.forEach(item => {
     const key = item.pr || "no-pr";
-
     if (!grouped[key]) grouped[key] = [];
     grouped[key].push(item);
   });
@@ -91,25 +101,43 @@ async function load() {
     const timeline = document.createElement("div");
     timeline.className = "timeline";
 
-    // sort old → new
-    grouped[pr].sort(
+    // sort events old → new
+    const events = grouped[pr].sort(
       (a, b) => new Date(a.created_at) - new Date(b.created_at)
     );
 
-    grouped[pr].forEach(item => {
-      const status = item.decisions.some(d => d.decision === "reject")
-        ? "reject"
-        : "approve";
+    let prevDecision = null;
 
+    events.forEach(item => {
+      const decisionObj = item.decisions?.[0] || {};
+      const status = decisionObj.decision || "unknown";
+      const reason = decisionObj.reason || "No reason provided";
+
+      // --- EVENT ---
       const eventDiv = document.createElement("div");
       eventDiv.className = "event";
 
       eventDiv.innerHTML = `
         → <span class="${status}">${status}</span>
-        <small>(${item.created_at})</small>
+        <small>(${item.created_at})</small><br/>
+        <span class="reason">Reason: ${reason}</span>
       `;
 
       timeline.appendChild(eventDiv);
+
+      // --- DIFF ---
+      if (prevDecision && prevDecision !== status) {
+        const diffDiv = document.createElement("div");
+        diffDiv.className = "diff";
+
+        diffDiv.innerHTML = `
+          ⚡ CHANGE: <b>${prevDecision}</b> → <b>${status}</b>
+        `;
+
+        timeline.appendChild(diffDiv);
+      }
+
+      prevDecision = status;
     });
 
     groupDiv.appendChild(timeline);
