@@ -98,10 +98,10 @@ app.post("/webhook", async (req, res) => {
     console.log("DECISIONS:", decisions);
 
     // --- Load Previous Decisions ---
-    const history = readDecisions({
-      repo: normalized.repo,
-      pr: normalized.pr
-    });
+    const history = await readDecisions({
+  repo: normalized.repo,
+  pr: normalized.pr
+});
 
     const previousDecision =
       history.length > 0 ? history[history.length - 1] : null;
@@ -159,11 +159,11 @@ app.get("/", (_, res) => {
 });
 
 // --- Query API ---
-app.get("/decisions", (req, res) => {
+app.get("/decisions", async (req, res) => {
   try {
     const { repo, pr, sha, latest } = req.query;
 
-    let results = readDecisions({ repo, pr, sha });
+    let results = await readDecisions({ repo, pr, sha });
 
     if (!results || results.length === 0) {
       return res.json({

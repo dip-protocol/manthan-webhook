@@ -1,4 +1,5 @@
 const fs = require("fs");
+const { supabase } = require("../supabaseClient");
 
 const DIR = "./data";
 const FILE = "./data/decisions.log";
@@ -18,7 +19,7 @@ function ensureFile() {
   }
 }
 
-// --- Save Decision ---
+// --- Save Decision (UNCHANGED) ---
 function saveDecision(record) {
   ensureFile();
 
@@ -26,9 +27,26 @@ function saveDecision(record) {
   fs.appendFileSync(FILE, line);
 }
 
-// --- Read Decisions ---
-function readDecisions(filters = {}) {
+// --- Read Decisions (UPGRADED) ---
+async function readDecisions(filters = {}) {
   try {
+    // 🔥 PRIMARY: Supabase
+    let query = supabase.from("decisions").select("*");
+
+    if (filters.repo) query = query.eq("repo", filters.repo);
+    if (filters.pr) query = query.eq("pr", String(filters.pr));
+    if (filters.sha) query = query.eq("sha", filters.sha);
+
+    const { data, error } = await query.limit(100);
+
+    if (!error && data && data.length > 0) {
+      console.log("Reading from Supabase");
+      return data;
+    }
+
+    console.warn("Supabase failed/empty → fallback to file");
+
+    // 🔁 FALLBACK: File
     ensureFile();
 
     const raw = fs.readFileSync(FILE, "utf-8");
@@ -57,7 +75,7 @@ function readDecisions(filters = {}) {
     });
 
   } catch (err) {
-    console.error("❌ readDecisions error:", err);
+    console.error("readDecisions error:", err);
     return [];
   }
 }
