@@ -1,7 +1,7 @@
 function mirrorToSupabase(supabase, record) {
   try {
     const row = {
-      id: record.id,
+      id: record.id + "-" + Date.now(),
       repo: record.repo,
       pr: String(record.pr),
       sha: record.sha,
@@ -14,14 +14,14 @@ function mirrorToSupabase(supabase, record) {
       .from("decisions")
       .insert([row])
       .then(() => {
-        console.log("✅ Supabase mirror success");
+        console.log("Supabase mirror success");
       })
       .catch((err) => {
-        console.error("❌ Supabase mirror error:", err.message);
+        console.error("Supabase mirror error:", err.message);
       });
 
   } catch (err) {
-    console.error("❌ Supabase mirror crash:", err.message);
+    console.error("Supabase mirror crash:", err.message);
   }
 }
 

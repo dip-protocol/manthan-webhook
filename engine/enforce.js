@@ -1,5 +1,5 @@
-import fetch from "node-fetch";
-import jwt from "jsonwebtoken";
+const fetch = require("node-fetch");
+const jwt = require("jsonwebtoken");
 
 // --- Generate JWT ---
 function generateJWT(appId, privateKey) {
@@ -60,7 +60,7 @@ async function getInstallationToken() {
 
 // --- Set Commit Status ---
 async function setCommitStatus(token, owner, repo, sha, state, description) {
-  console.log("🚀 Setting status:", state, sha);
+  console.log("Setting status:", state, sha);
 
   const res = await fetch(
     `https://api.github.com/repos/${owner}/${repo}/statuses/${sha}`,
@@ -80,19 +80,19 @@ async function setCommitStatus(token, owner, repo, sha, state, description) {
   );
 
   const data = await res.json();
-  console.log("📊 Status response:", data);
+  console.log("Status response:", data);
 
   if (!res.ok) {
-    console.error("❌ Failed to set commit status");
+    console.error("Failed to set commit status");
   }
 }
 
 // --- Enforce PR Decision ---
-export async function enforcePR(decisions, payload, diff = null) {
+async function enforcePR(decisions, payload, diff = null) {
 
-  // ✅ Safety fallback
+  // Safety fallback
   if (!Array.isArray(decisions) || decisions.length === 0) {
-    console.log("❌ NO DECISIONS");
+    console.log("NO DECISIONS");
 
     decisions = [
       {
@@ -102,7 +102,7 @@ export async function enforcePR(decisions, payload, diff = null) {
       }
     ];
   } else {
-    console.log("✅ USING REAL DECISIONS");
+    console.log("USING REAL DECISIONS");
   }
 
   const [owner, repo] = payload.repository.full_name.split("/");
@@ -112,7 +112,7 @@ export async function enforcePR(decisions, payload, diff = null) {
   const token = await getInstallationToken();
 
   if (!token) {
-    console.error("❌ No installation token");
+    console.error("No installation token");
     return;
   }
 
@@ -120,8 +120,8 @@ export async function enforcePR(decisions, payload, diff = null) {
 
   // --- Build UI ---
   const summary = hasReject
-    ? "❌ PR REJECTED"
-    : "✅ PR APPROVED";
+    ? " PR REJECTED"
+    : " PR APPROVED";
 
   const details = decisions.map(d => `
 - **${d.contract}** → ${d.decision.toUpperCase()}
@@ -134,17 +134,17 @@ export async function enforcePR(decisions, payload, diff = null) {
     diffSection = `
 ---
 
-### 🔄 What Changed
+### What Changed
 ${diff.map(d => `- ${d}`).join("\n")}
 `;
   }
 
   const body = `
-## 🤖 Manthan Decision
+## Manthan Decision
 
 ### ${summary}
 
-### 📊 Details
+### Details
 ${details}
 
 ${diffSection}
@@ -153,7 +153,7 @@ ${diffSection}
 _Manthan ensures deterministic PR validation_
 `;
 
-  // ✅ THIS WAS MISSING (CRITICAL FIX)
+  // --- Post PR Comment ---
   await fetch(
     `https://api.github.com/repos/${owner}/${repo}/issues/${issue_number}/comments`,
     {
@@ -167,7 +167,7 @@ _Manthan ensures deterministic PR validation_
     }
   );
 
-  console.log("💬 Comment posted");
+  console.log("Comment posted");
 
   // --- Set Commit Status ---
   await setCommitStatus(
@@ -179,3 +179,5 @@ _Manthan ensures deterministic PR validation_
     hasReject ? "Manthan rejected PR" : "Manthan approved PR"
   );
 }
+
+module.exports = { enforcePR };

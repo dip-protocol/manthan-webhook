@@ -1,5 +1,7 @@
-import { PR_DESCRIPTION_REQUIRED } from "./contracts/PR_DESCRIPTION_REQUIRED.js";
+const { PR_DESCRIPTION_REQUIRED } = require("./contracts/PR_DESCRIPTION_REQUIRED");
 
-export const CONTRACTS = [
+const CONTRACTS = [
   PR_DESCRIPTION_REQUIRED
 ];
+
+module.exports = { CONTRACTS };

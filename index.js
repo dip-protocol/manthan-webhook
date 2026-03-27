@@ -1,10 +1,12 @@
-import express from "express";
-import crypto from "crypto";
-import { runDecisionEngine } from "./engine/decisionEngine.js";
-import { enforcePR } from "./engine/enforce.js";
-import { saveDecision, readDecisions } from "./engine/decisionStore.js";
-import { aggregateDecisions } from "./engine/aggregation.js";
-import { diffDecisions } from "./engine/diff.js";
+const express = require("express");
+const crypto = require("crypto");
+
+const { runDecisionEngine } = require("./engine/decisionEngine");
+const { enforcePR } = require("./engine/enforce");
+const { saveDecision, readDecisions } = require("./engine/decisionStore");
+const { aggregateDecisions } = require("./engine/aggregation");
+const { diffDecisions } = require("./engine/diff");
+
 const { supabase } = require("./supabaseClient");
 const { mirrorToSupabase } = require("./supabaseMirror");
 
@@ -13,7 +15,7 @@ app.use(express.json());
 
 const SECRET = process.env.GITHUB_SECRET;
 
-// 🔥 Deduplication store with TTL
+// Deduplication store with TTL
 const processedEvents = new Map();
 const EVENT_TTL = 10 * 60 * 1000;
 
@@ -123,16 +125,13 @@ app.post("/webhook", async (req, res) => {
    console.log("SAVING DECISION:", record.id);
 await saveDecision(record);
 
-// 🔥 NON-BLOCKING MIRROR (v0.4)
-mirrorToSupabase(supabase, record);
-
-// 👇 ADD THIS LINE (THIS IS THE ONLY CHANGE)
+// NON-BLOCKING MIRROR (v0.4)
 mirrorToSupabase(supabase, record);
 
     // --- Enforcement ---
     if (event === "pull_request") {
       if (!decisions || decisions.length === 0) {
-        console.log("❌ No decision → forcing failure");
+        console.log("No decision → forcing failure");
 
         decisions = [
           {
@@ -209,5 +208,5 @@ const diff = latestDecision
 const PORT = process.env.PORT || 8080;
 
 app.listen(PORT, "0.0.0.0", () => {
-  console.log(`🚀 Manthan running on port ${PORT}`);
+  console.log(`Manthan running on port ${PORT}`);
 });

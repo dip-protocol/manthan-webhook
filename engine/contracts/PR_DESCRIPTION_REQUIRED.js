@@ -1,4 +1,4 @@
-export const PR_DESCRIPTION_REQUIRED = {
+const PR_DESCRIPTION_REQUIRED = {
   id: "PR_DESCRIPTION_REQUIRED",
   version: "v1.0.0",
 
@@ -22,3 +22,5 @@ export const PR_DESCRIPTION_REQUIRED = {
     };
   }
 };
+
+module.exports = { PR_DESCRIPTION_REQUIRED };

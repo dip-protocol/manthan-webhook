@@ -1,4 +1,4 @@
-import fs from "fs";
+const fs = require("fs");
 
 const DIR = "./data";
 const FILE = "./data/decisions.log";
@@ -19,7 +19,7 @@ function ensureFile() {
 }
 
 // --- Save Decision ---
-export function saveDecision(record) {
+function saveDecision(record) {
   ensureFile();
 
   const line = JSON.stringify(record) + "\n";
@@ -27,7 +27,7 @@ export function saveDecision(record) {
 }
 
 // --- Read Decisions ---
-export function readDecisions(filters = {}) {
+function readDecisions(filters = {}) {
   try {
     ensureFile();
 
@@ -61,3 +61,5 @@ export function readDecisions(filters = {}) {
     return [];
   }
 }
+
+module.exports = { saveDecision, readDecisions };

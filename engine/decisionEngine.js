@@ -1,8 +1,8 @@
-import { CONTRACTS } from "./contractsIndex.js";
+const { CONTRACTS } = require("./contractsIndex");
 
-export function runDecisionEngine(event, payload) {
+function runDecisionEngine(event, payload) {
   try {
-    console.log("🟡 EVENT RECEIVED:", event);
+console.log("EVENT RECEIVED:", event);
 
     // --- Non PR fallback ---
     if (event !== "pull_request") {
@@ -15,11 +15,11 @@ export function runDecisionEngine(event, payload) {
         }
       ];
 
-      console.log("🟢 NON-PR DECISION:", decision);
+      console.log("NON-PR DECISION:", decision);
       return decision;
     }
 
-    console.log("🟡 Running contracts:", CONTRACTS.map(c => c.id));
+    console.log("Running contracts:", CONTRACTS.map(c => c.id));
 
     const results = CONTRACTS.map((contract) => {
       try {
@@ -32,11 +32,11 @@ export function runDecisionEngine(event, payload) {
           reason: result.reason || ""
         };
 
-        console.log(`🧩 Contract ${contract.id}:`, decision);
+        console.log(`Contract ${contract.id}:`, decision);
 
         return decision;
       } catch (err) {
-        console.error(`❌ Contract failed: ${contract.id}`, err);
+        console.error(`Contract failed: ${contract.id}`, err);
 
         return {
           contract: contract.id,
@@ -58,16 +58,16 @@ export function runDecisionEngine(event, payload) {
         }
       ];
 
-      console.warn("⚠️ FALLBACK TRIGGERED:", fallback);
+      console.warn("FALLBACK TRIGGERED:", fallback);
       return fallback;
     }
 
-    console.log("✅ FINAL DECISIONS:", results);
+    console.log("FINAL DECISIONS:", results);
 
     return results;
 
   } catch (err) {
-    console.error("🔥 Decision engine error:", err);
+    console.error("Decision engine error:", err);
 
     return [
       {
@@ -79,3 +79,5 @@ export function runDecisionEngine(event, payload) {
     ];
   }
 }
+
+module.exports = { runDecisionEngine };

@@ -1,4 +1,4 @@
-export function diffDecisions(previous = null, current = null) {
+function diffDecisions(previous = null, current = null) {
   if (!previous || !current) {
     return {
       changed: false,
@@ -9,7 +9,7 @@ export function diffDecisions(previous = null, current = null) {
   const prevSummary = summarize(previous.decisions);
   const currSummary = summarize(current.decisions);
 
-  // 🔥 No change
+  // No change
   if (prevSummary.finalDecision === currSummary.finalDecision) {
     return {
       changed: false,
@@ -17,7 +17,7 @@ export function diffDecisions(previous = null, current = null) {
     };
   }
 
-  // 🔥 Change detected
+  // Change detected
   return {
     changed: true,
     from: prevSummary.finalDecision,
@@ -36,3 +36,5 @@ function summarize(decisions = []) {
     reasons: rejects.map(d => d.reason)
   };
 }
+
+module.exports = { diffDecisions };

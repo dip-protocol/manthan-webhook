@@ -1,4 +1,4 @@
-export function aggregateDecisions(decisions = []) {
+function aggregateDecisions(decisions = []) {
   if (!decisions || decisions.length === 0) {
     return {
       finalDecision: "reject",
@@ -15,3 +15,5 @@ export function aggregateDecisions(decisions = []) {
     total: decisions.length
   };
 }
+
+module.exports = { aggregateDecisions };
