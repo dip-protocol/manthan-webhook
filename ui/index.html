@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Manthan — Decision Infrastructure</title>
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <style>
+    body {
+      font-family: Arial;
+      padding: 20px;
+      background: #0f172a;
+      color: white;
+      text-align: center;
+    }
+
+    h1 { font-size: 40px; margin-bottom: 10px; }
+
+    .tagline {
+      font-size: 18px;
+      color: #cbd5f5;
+      margin-bottom: 20px;
+    }
+
+    .pitch {
+      font-size: 16px;
+      margin-bottom: 25px;
+      color: #94a3b8;
+    }
+
+    .cta a {
+      padding: 12px 18px;
+      margin: 5px;
+      border-radius: 8px;
+      text-decoration: none;
+      font-weight: bold;
+      display: inline-block;
+    }
+
+    .primary { background: #22c55e; color: black; }
+    .secondary { background: #334155; color: white; }
+
+    .section {
+      margin-top: 40px;
+      max-width: 700px;
+      margin-left: auto;
+      margin-right: auto;
+      text-align: left;
+    }
+
+    .box {
+      background: #1e293b;
+      padding: 15px;
+      border-radius: 10px;
+      margin-bottom: 12px;
+    }
+
+    .highlight { color: #22c55e; font-weight: bold; }
+
+    input {
+      padding: 10px;
+      width: 100%;
+      margin-bottom: 10px;
+      border-radius: 6px;
+      border: none;
+    }
+
+    button {
+      padding: 10px 15px;
+      background: #22c55e;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+
+    @media (max-width:600px) {
+      h1 { font-size: 28px; }
+      .cta a { display:block; width:100%; margin:8px 0; }
+    }
+  </style>
+</head>
+
+<body>
+
+<h1>🧠 Manthan</h1>
+
+<div class="tagline">
+  The Decision Layer for Software
+</div>
+
+<div class="pitch">
+  Like CI/CD made code reliable, Manthan makes <span class="highlight">decisions reliable</span>.
+</div>
+
+<div class="cta">
+  <a class="primary" href="/app">View Live System</a>
+  <a class="secondary" href="/decisions">View API</a>
+</div>
+
+<!-- 🎧 AUDIO -->
+<div style="margin-top:30px;">
+  <p style="color:#94a3b8;">▶ Listen to how Manthan works</p>
+  <audio controls style="width:100%; max-width:400px;">
+    <source src="/audio/manthan.mp3" type="audio/mpeg">
+  </audio>
+</div>
+
+<!-- PROBLEM -->
+<div class="section">
+  <h2>The Problem</h2>
+  <div class="box">
+    Decisions in software are inconsistent, undocumented, and impossible to audit.
+  </div>
+</div>
+
+<!-- SOLUTION -->
+<div class="section">
+  <h2>The Solution</h2>
+  <div class="box">
+    Manthan makes decisions deterministic, traceable, and enforceable.
+  </div>
+</div>
+
+<!-- PROOF -->
+<div class="section">
+  <h2>Live Proof</h2>
+  <div class="box">
+    Real PR decisions, full history, reasoning, and decision evolution.
+  </div>
+</div>
+
+<!-- VISION -->
+<div class="section">
+  <h2>Vision</h2>
+  <div class="box">
+    A world where every decision is traceable, auditable, and built for trust.
+  </div>
+</div>
+
+<!-- 📩 CONTACT -->
+<div class="section">
+  <h2>Get Early Access</h2>
+
+  <div class="box">
+    <input type="email" id="email" placeholder="Enter your email">
+    <button onclick="submitEmail()">Request Access</button>
+    <p id="msg" style="margin-top:10px; color:#94a3b8;"></p>
+  </div>
+</div>
+
+<!-- 🔗 FOUNDER -->
+<div class="section">
+  <h2>Reach the Founder</h2>
+
+  <div class="box">
+    <p>
+      I'm building Manthan — a decision infrastructure layer for software.
+    </p>
+
+    <a 
+      href="https://www.linkedin.com/in/pavancharak/" 
+      target="_blank"
+      style="
+        display:inline-block;
+        margin-top:10px;
+        padding:10px 15px;
+        background:#0a66c2;
+        color:white;
+        border-radius:6px;
+        text-decoration:none;
+        font-weight:bold;
+      "
+    >
+      Connect with Pavan on LinkedIn
+    </a>
+  </div>
+</div>
+
+<script>
+async function submitEmail() {
+  const email = document.getElementById("email").value;
+  const msg = document.getElementById("msg");
+
+  if (!email || !email.includes("@")) {
+    msg.innerText = "Enter valid email";
+    return;
+  }
+
+  try {
+    const res = await fetch("/api/lead", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({ email })
+    });
+
+    if (res.ok) {
+      msg.innerText = "Thanks. We’ll reach out.";
+    } else {
+      msg.innerText = "Something went wrong";
+    }
+
+  } catch (err) {
+    msg.innerText = "Network error";
+  }
+}
+</script>
+
+</body>
+</html>

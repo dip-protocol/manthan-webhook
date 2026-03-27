@@ -1,22 +1,83 @@
-import { prDescriptionContract } from "../contracts/prDescription.js";
+const { CONTRACTS } = require("./contractsIndex");
 
-const contracts = [prDescriptionContract];
+function runDecisionEngine(event, payload) {
+  try {
+console.log("EVENT RECEIVED:", event);
 
-export function runDecisionEngine(event, payload) {
-  if (event !== "pull_request") {
-    return null;
-  }
+    // --- Non PR fallback ---
+    if (event !== "pull_request") {
+      const decision = [
+        {
+          contract: "NON_PR_EVENT",
+          version: "v1.0.0",
+          decision: "approve",
+          reason: "Non-PR event ignored"
+        }
+      ];
 
-  const results = [];
+      console.log("NON-PR DECISION:", decision);
+      return decision;
+    }
 
-  for (const contract of contracts) {
-    const result = contract.evaluate(payload);
+    console.log("Running contracts:", CONTRACTS.map(c => c.id));
 
-    results.push({
-      contract: contract.id,
-      ...result
+    const results = CONTRACTS.map((contract) => {
+      try {
+        const result = contract.evaluate(payload);
+
+        const decision = {
+          contract: contract.id,
+          version: contract.version,
+          decision: result.decision,
+          reason: result.reason || ""
+        };
+
+        console.log(`Contract ${contract.id}:`, decision);
+
+        return decision;
+      } catch (err) {
+        console.error(`Contract failed: ${contract.id}`, err);
+
+        return {
+          contract: contract.id,
+          version: contract.version,
+          decision: "reject",
+          reason: "Contract execution failed"
+        };
+      }
     });
-  }
 
-  return results;
+    // --- Fallback ---
+    if (!results || results.length === 0) {
+      const fallback = [
+        {
+          contract: "SYSTEM_FALLBACK",
+          version: "v1.0.0",
+          decision: "reject",
+          reason: "No contracts produced a decision"
+        }
+      ];
+
+      console.warn("FALLBACK TRIGGERED:", fallback);
+      return fallback;
+    }
+
+    console.log("FINAL DECISIONS:", results);
+
+    return results;
+
+  } catch (err) {
+    console.error("Decision engine error:", err);
+
+    return [
+      {
+        contract: "SYSTEM_ERROR",
+        version: "v1.0.0",
+        decision: "reject",
+        reason: "Decision engine failure"
+      }
+    ];
+  }
 }
+
+module.exports = { runDecisionEngine };

@@ -1,19 +1,31 @@
-import express from "express";
-import crypto from "crypto";
-import { runDecisionEngine } from "./engine/decisionEngine.js";
-import { enforcePR } from "./engine/enforce.js";
-import { saveDecision, readDecisions } from "./engine/decisionStore.js";
+const express = require("express");
+const path = require("path");
+const crypto = require("crypto");
+
+const { runDecisionEngine } = require("./engine/decisionEngine");
+const { enforcePR } = require("./engine/enforce");
+const { saveDecision, readDecisions } = require("./engine/decisionStore");
+const { aggregateDecisions } = require("./engine/aggregation");
+const { diffDecisions } = require("./engine/diff");
+
+const { supabase } = require("./supabaseClient");
+const { mirrorToSupabase } = require("./supabaseMirror");
 
 const app = express();
+app.use(express.static(path.join(__dirname, "ui")));
+
+app.get("/app", (req, res) => {
+  res.sendFile(path.join(__dirname, "ui", "app.html"));
+});
 app.use(express.json());
 
 const SECRET = process.env.GITHUB_SECRET;
 
-// 🔥 Deduplication store with TTL (memory-safe)
+// Deduplication store with TTL
 const processedEvents = new Map();
-const EVENT_TTL = 10 * 60 * 1000; // 10 minutes
+const EVENT_TTL = 10 * 60 * 1000;
 
-// --- Verify GitHub Webhook Signature ---
+// --- Verify Signature ---
 function verifySignature(req) {
   const signature = req.headers["x-hub-signature-256"];
   if (!signature || !SECRET) return true;
@@ -32,10 +44,9 @@ function verifySignature(req) {
   }
 }
 
-// --- Webhook Handler ---
+// --- Webhook ---
 app.post("/webhook", async (req, res) => {
   try {
-    // ✅ Signature verification
     if (!verifySignature(req)) {
       console.log("Invalid signature");
       return res.sendStatus(401);
@@ -45,14 +56,13 @@ app.post("/webhook", async (req, res) => {
     const event = req.headers["x-github-event"];
     const now = Date.now();
 
-    // 🔥 Cleanup old events
+    // Cleanup TTL
     for (const [id, timestamp] of processedEvents.entries()) {
       if (now - timestamp > EVENT_TTL) {
         processedEvents.delete(id);
       }
     }
 
-    // 🔥 Deduplication check
     if (processedEvents.has(deliveryId)) {
       console.log("Duplicate event ignored:", deliveryId);
       return res.sendStatus(200);
@@ -68,26 +78,46 @@ app.post("/webhook", async (req, res) => {
       timestamp: new Date().toISOString(),
     };
 
-    console.log(
-      `EVENT: ${event} | ${normalized.repo} | PR #${normalized.pr}`
-    );
+    console.log(`EVENT: ${event} | ${normalized.repo} | PR #${normalized.pr}`);
 
     // --- Decision Engine ---
-    let decisions = runDecisionEngine(event, req.body);
+    let decisions = [];
 
-    // 🔥 Ensure push always produces decision
-    if (event === "push") {
-      decisions = [
-        {
-          contract: "MAIN_BRANCH_CHECK",
-          decision: "approve",
-          reason: "Push event validation"
-        }
-      ];
-      console.log("DECISION: approve (push)");
+    if (event === "pull_request") {
+      const action = req.body.action;
+
+      if (
+        action === "opened" ||
+        action === "edited" ||
+        action === "synchronize" ||
+        action === "reopened"
+      ) {
+        decisions = runDecisionEngine(event, req.body);
+      } else {
+        console.log("Ignoring PR action:", action);
+        return res.sendStatus(200);
+      }
+    } else {
+      decisions = runDecisionEngine(event, req.body);
     }
 
-    // --- v0.3: Save Decision ---
+    console.log("DECISIONS:", decisions);
+
+    // --- Load Previous Decisions ---
+    const history = await readDecisions({
+  repo: normalized.repo,
+  pr: normalized.pr
+});
+
+    const previousDecision =
+      history.length > 0 ? history[history.length - 1] : null;
+
+    // --- Compute Diff ---
+    const diff = diffDecisions(previousDecision, {
+      decisions
+    });
+
+    // --- Save Decision ---
     const record = {
       id: deliveryId,
       event,
@@ -98,40 +128,110 @@ app.post("/webhook", async (req, res) => {
       timestamp: new Date().toISOString()
     };
 
-    console.log("SAVING DECISION:", record.id);
-    saveDecision(record);
+   console.log("SAVING DECISION:", record.id);
+await saveDecision(record);
+
+// NON-BLOCKING MIRROR (v0.4)
+mirrorToSupabase(supabase, record);
 
     // --- Enforcement ---
-    if (decisions && decisions.length > 0) {
-      await enforcePR(decisions, req.body);
+    if (event === "pull_request") {
+      if (!decisions || decisions.length === 0) {
+        console.log("No decision → forcing failure");
+
+        decisions = [
+          {
+            contract: "SYSTEM_GUARD",
+            decision: "reject",
+            reason: "No decision produced by engine"
+          }
+        ];
+      }
+
+      await enforcePR(decisions, req.body, diff);
     }
 
     res.sendStatus(200);
+
   } catch (err) {
     console.error("Webhook error:", err);
     res.sendStatus(500);
   }
 });
 
-// --- Health Check ---
-app.get("/", (_, res) => {
-  res.send("Manthan Webhook Running");
-});
+// --- Health ---
 
-// --- Query Decisions (v0.3.1) ---
-app.get("/decisions", (req, res) => {
+
+// --- Query API ---
+app.get("/decisions", async (req, res) => {
   try {
-    const { repo, pr, sha } = req.query;
+    const { repo, pr, sha, latest } = req.query;
 
-    const results = readDecisions({ repo, pr, sha });
+    let results = await readDecisions({ repo, pr, sha });
 
+    if (!results || results.length === 0) {
+      return res.json({
+        count: 0,
+        summary: null,
+        diff: null,
+        results: []
+      });
+    }
+
+    // Sort latest first
+    results.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+
+    if (latest === "true") {
+      results = [results[0]];
+    }
+
+    const latestDecision = results[0] || null;
+const previousDecision = results[1] || null;
+
+const summary = latestDecision?.decisions
+  ? aggregateDecisions(latestDecision.decisions)
+  : null;
+
+const diff = latestDecision
+  ? diffDecisions(previousDecision, latestDecision)
+  : null;
     res.json({
       count: results.length,
+      summary,
+      diff,
       results
     });
+
   } catch (err) {
     console.error("Query error:", err);
     res.sendStatus(500);
+  }
+});
+// --- Lead Capture API (v1.0) ---
+app.post("/api/lead", async (req, res) => {
+  try {
+    const { email } = req.body;
+
+    if (!email || !email.includes("@")) {
+      return res.status(400).send("invalid email");
+    }
+
+    const { error } = await supabase
+      .from("leads")
+      .insert([{ email }]);
+
+    if (error) {
+      console.error("Supabase error:", error);
+      return res.status(500).send("db error");
+    }
+
+    console.log("📩 New lead:", email);
+
+    res.send("ok");
+
+  } catch (err) {
+    console.error("Lead API error:", err);
+    res.status(500).send("server error");
   }
 });
 
@@ -139,5 +239,5 @@ app.get("/decisions", (req, res) => {
 const PORT = process.env.PORT || 8080;
 
 app.listen(PORT, "0.0.0.0", () => {
-  console.log(`🚀 Manthan running on port ${PORT}`);
+  console.log(`Manthan running on port ${PORT}`);
 });
