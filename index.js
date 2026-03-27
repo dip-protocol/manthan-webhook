@@ -207,6 +207,33 @@ const diff = latestDecision
     res.sendStatus(500);
   }
 });
+// --- Lead Capture API (v1.0) ---
+app.post("/api/lead", async (req, res) => {
+  try {
+    const { email } = req.body;
+
+    if (!email || !email.includes("@")) {
+      return res.status(400).send("invalid email");
+    }
+
+    const { error } = await supabase
+      .from("leads")
+      .insert([{ email }]);
+
+    if (error) {
+      console.error("Supabase error:", error);
+      return res.status(500).send("db error");
+    }
+
+    console.log("📩 New lead:", email);
+
+    res.send("ok");
+
+  } catch (err) {
+    console.error("Lead API error:", err);
+    res.status(500).send("server error");
+  }
+});
 
 // --- Server Start ---
 const PORT = process.env.PORT || 8080;

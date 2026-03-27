@@ -3,7 +3,6 @@
 <head>
   <title>Manthan — Decision Infrastructure</title>
 
-  <!-- 🔥 MOBILE SUPPORT -->
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
   <style>
@@ -15,10 +14,7 @@
       text-align: center;
     }
 
-    h1 {
-      font-size: 40px;
-      margin-bottom: 10px;
-    }
+    h1 { font-size: 40px; margin-bottom: 10px; }
 
     .tagline {
       font-size: 18px;
@@ -32,10 +28,6 @@
       color: #94a3b8;
     }
 
-    .cta {
-      margin-top: 20px;
-    }
-
     .cta a {
       padding: 12px 18px;
       margin: 5px;
@@ -45,15 +37,8 @@
       display: inline-block;
     }
 
-    .primary {
-      background: #22c55e;
-      color: black;
-    }
-
-    .secondary {
-      background: #334155;
-      color: white;
-    }
+    .primary { background: #22c55e; color: black; }
+    .secondary { background: #334155; color: white; }
 
     .section {
       margin-top: 40px;
@@ -70,34 +55,27 @@
       margin-bottom: 12px;
     }
 
-    .highlight {
-      color: #22c55e;
-      font-weight: bold;
+    .highlight { color: #22c55e; font-weight: bold; }
+
+    input {
+      padding: 10px;
+      width: 100%;
+      margin-bottom: 10px;
+      border-radius: 6px;
+      border: none;
     }
 
-    /* 🔥 RESPONSIVE */
-    @media (max-width: 600px) {
-      h1 {
-        font-size: 28px;
-      }
+    button {
+      padding: 10px 15px;
+      background: #22c55e;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+    }
 
-      .tagline {
-        font-size: 16px;
-      }
-
-      .pitch {
-        font-size: 14px;
-      }
-
-      .cta a {
-        display: block;
-        width: 100%;
-        margin: 8px 0;
-      }
-
-      body {
-        padding: 15px;
-      }
+    @media (max-width:600px) {
+      h1 { font-size: 28px; }
+      .cta a { display:block; width:100%; margin:8px 0; }
     }
   </style>
 </head>
@@ -119,102 +97,76 @@
   <a class="secondary" href="/decisions">View API</a>
 </div>
 
-<!-- PROBLEM -->
+<!-- AUDIO -->
+<div style="margin-top:30px;">
+  <p style="color:#94a3b8;">▶ Listen to how Manthan works</p>
+  <audio controls style="width:100%; max-width:400px;">
+    <source src="/audio/manthan.mp3" type="audio/mpeg">
+  </audio>
+</div>
+
+<!-- SECTIONS -->
 <div class="section">
   <h2>The Problem</h2>
-
-  <div class="box">
-    Software decisions (PR approvals, reviews, policies) are:
-    <br/><br/>
-    → inconsistent<br/>
-    → undocumented<br/>
-    → impossible to audit
-  </div>
-
-  <div class="box">
-    Today, critical decisions rely on humans and heuristics — not systems.
-  </div>
+  <div class="box">Decisions in software are inconsistent and not traceable.</div>
 </div>
 
-<!-- SHIFT -->
-<div class="section">
-  <h2>The Shift</h2>
-
-  <div class="box">
-    Code became reliable with compilers and CI/CD.
-  </div>
-
-  <div class="box">
-    Decisions are the next layer — and they need infrastructure.
-  </div>
-</div>
-
-<!-- SOLUTION -->
 <div class="section">
   <h2>The Solution</h2>
-
-  <div class="box">
-    Manthan turns decisions into a <span class="highlight">deterministic, auditable system</span>.
-  </div>
-
-  <div class="box">
-    Every decision is:
-    <br/><br/>
-    → evaluated (contracts)<br/>
-    → decided (engine)<br/>
-    → stored (truth layer)<br/>
-    → enforced (GitHub)
-  </div>
+  <div class="box">Manthan makes decisions deterministic and auditable.</div>
 </div>
 
-<!-- PROOF -->
 <div class="section">
   <h2>Live Proof</h2>
-
-  <div class="box">
-    This is not a demo.
-    <br/><br/>
-    The live system shows:
-    <br/><br/>
-    → real PR decisions<br/>
-    → full history per PR<br/>
-    → decision evolution (reject → approve)<br/>
-    → reasoning + audit trail<br/>
-    → transition graph
-  </div>
+  <div class="box">Real decisions with history, reasoning, and transitions.</div>
 </div>
 
-<!-- CATEGORY -->
-<div class="section">
-  <h2>Category</h2>
-
-  <div class="box">
-    Manthan defines a new category:
-    <br/><br/>
-    <span class="highlight">Decision Infrastructure</span>
-  </div>
-
-  <div class="box">
-    The layer between:
-    <br/><br/>
-    → code (what to run)<br/>
-    → people (what to decide)
-  </div>
-</div>
-
-<!-- VISION -->
 <div class="section">
   <h2>Vision</h2>
+  <div class="box">A world where every decision is traceable and trusted.</div>
+</div>
+
+<!-- CONTACT -->
+<div class="section">
+  <h2>Get Early Access</h2>
 
   <div class="box">
-    A world where every software decision is:
-    <br/><br/>
-    → deterministic<br/>
-    → traceable<br/>
-    → auditable<br/>
-    → enforceable
+    <input type="email" id="email" placeholder="Enter your email">
+    <button onclick="submitEmail()">Request Access</button>
+    <p id="msg" style="margin-top:10px; color:#94a3b8;"></p>
   </div>
 </div>
+
+<script>
+async function submitEmail() {
+  const email = document.getElementById("email").value;
+  const msg = document.getElementById("msg");
+
+  if (!email || !email.includes("@")) {
+    msg.innerText = "Enter valid email";
+    return;
+  }
+
+  try {
+    const res = await fetch("/api/lead", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({ email })
+    });
+
+    if (res.ok) {
+      msg.innerText = "Thanks. We’ll reach out.";
+    } else {
+      msg.innerText = "Something went wrong";
+    }
+
+  } catch (err) {
+    msg.innerText = "Network error";
+  }
+}
+</script>
 
 </body>
 </html>
