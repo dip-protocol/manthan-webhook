@@ -12,7 +12,11 @@ const { supabase } = require("./supabaseClient");
 const { mirrorToSupabase } = require("./supabaseMirror");
 
 const app = express();
-app.use("/", express.static(path.join(__dirname, "ui")));
+app.use(express.static(path.join(__dirname, "ui")));
+
+app.get("/app", (req, res) => {
+  res.sendFile(path.join(__dirname, "ui", "app.html"));
+});
 app.use(express.json());
 
 const SECRET = process.env.GITHUB_SECRET;
