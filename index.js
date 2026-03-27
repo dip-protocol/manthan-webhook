@@ -1,4 +1,5 @@
 const express = require("express");
+const path = require("path");
 const crypto = require("crypto");
 
 const { runDecisionEngine } = require("./engine/decisionEngine");
@@ -11,6 +12,7 @@ const { supabase } = require("./supabaseClient");
 const { mirrorToSupabase } = require("./supabaseMirror");
 
 const app = express();
+app.use("/", express.static(path.join(__dirname, "ui")));
 app.use(express.json());
 
 const SECRET = process.env.GITHUB_SECRET;
@@ -154,9 +156,7 @@ mirrorToSupabase(supabase, record);
 });
 
 // --- Health ---
-app.get("/", (_, res) => {
-  res.send("Manthan Webhook Running");
-});
+
 
 // --- Query API ---
 app.get("/decisions", async (req, res) => {
